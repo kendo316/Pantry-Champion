@@ -114,6 +114,9 @@ const CATEGORIES = [
 
 // Initialize App
 function initApp() {
+    // Check for invite code in URL before authentication
+    checkForInviteCode();
+
     // Auth state observer
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -132,6 +135,25 @@ function initApp() {
 
     // Setup event listeners
     setupEventListeners();
+}
+
+// Check for invite code in URL and store it for later
+function checkForInviteCode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteCode = urlParams.get('invite') || urlParams.get('code') || urlParams.get('pantry');
+
+    if (inviteCode) {
+        // Store the invite code so it persists through login/signup
+        localStorage.setItem('pendingInvite', inviteCode.toUpperCase());
+
+        // Pre-fill the pantry code input if visible
+        if (pantryCodeInput) {
+            pantryCodeInput.value = inviteCode.toUpperCase();
+        }
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 }
 
 // Check URL Parameters for iOS Shortcuts Integration
@@ -256,9 +278,28 @@ async function handleSignup() {
 
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        // Create a new pantry for this user
-        await createNewPantry(userCredential.user.uid);
-        showToast('Account created successfully', 'success');
+
+        // Check if there's a pending invite code
+        const pendingInvite = localStorage.getItem('pendingInvite');
+
+        if (pendingInvite) {
+            // User is signing up to join an existing pantry
+            try {
+                await joinPantryWithCode(userCredential.user.uid, pendingInvite);
+                localStorage.removeItem('pendingInvite'); // Clear the pending invite
+                showToast('Account created and joined pantry successfully', 'success');
+            } catch (error) {
+                console.error('Error joining pantry after signup:', error);
+                // Fallback: create new pantry if join fails
+                await createNewPantry(userCredential.user.uid);
+                localStorage.removeItem('pendingInvite');
+                showToast('Account created (could not join pantry, created new one)', 'warning');
+            }
+        } else {
+            // Normal signup - create a new pantry for this user
+            await createNewPantry(userCredential.user.uid);
+            showToast('Account created successfully', 'success');
+        }
     } catch (error) {
         console.error('Signup error:', error);
         showToast(error.message, 'error');
@@ -279,21 +320,7 @@ async function handleJoinPantry() {
     }
 
     try {
-        // Check if pantry exists
-        const pantryDoc = await getDoc(doc(db, 'pantries', code));
-
-        if (!pantryDoc.exists()) {
-            showToast('Pantry code not found', 'error');
-            return;
-        }
-
-        // Update user's pantry reference
-        await setDoc(doc(db, 'users', currentUser.uid), {
-            pantryId: code,
-            email: currentUser.email,
-            joinedAt: serverTimestamp()
-        });
-
+        await joinPantryWithCode(currentUser.uid, code);
         currentPantryId = code;
         setupRealtimeListeners();
         showToast('Joined pantry successfully', 'success');
@@ -302,6 +329,25 @@ async function handleJoinPantry() {
         console.error('Join pantry error:', error);
         showToast('Error joining pantry', 'error');
     }
+}
+
+// Helper function to join a pantry with a code (used by both manual join and signup flow)
+async function joinPantryWithCode(userId, code) {
+    // Check if pantry exists
+    const pantryDoc = await getDoc(doc(db, 'pantries', code));
+
+    if (!pantryDoc.exists()) {
+        throw new Error('Pantry code not found');
+    }
+
+    // Update user's pantry reference
+    await setDoc(doc(db, 'users', userId), {
+        pantryId: code,
+        email: auth.currentUser.email,
+        joinedAt: serverTimestamp()
+    });
+
+    currentPantryId = code;
 }
 
 async function handleLogout() {
@@ -343,6 +389,25 @@ async function createNewPantry(userId) {
 
 async function loadUserPantry() {
     try {
+        // Check if there's a pending invite (for existing users logging in via invite link)
+        const pendingInvite = localStorage.getItem('pendingInvite');
+
+        if (pendingInvite) {
+            try {
+                await joinPantryWithCode(currentUser.uid, pendingInvite);
+                localStorage.removeItem('pendingInvite');
+                showToast('Joined pantry successfully', 'success');
+                setupRealtimeListeners();
+                updateSettingsDisplay();
+                return;
+            } catch (error) {
+                console.error('Error joining pantry from invite:', error);
+                localStorage.removeItem('pendingInvite');
+                showToast('Invalid invite code', 'error');
+                // Continue to load user's existing pantry
+            }
+        }
+
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
         if (userDoc.exists()) {
