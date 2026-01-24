@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pantry-champion-v2';
+const CACHE_NAME = 'pantry-champion-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -10,6 +10,9 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', event => {
+  // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -22,22 +25,43 @@ self.addEventListener('install', event => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - use network-first strategy for HTML files
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
+  const url = new URL(event.request.url);
+
+  // Network-first strategy for HTML files to always get the latest
+  if (event.request.headers.get('accept').includes('text/html') || url.pathname.endsWith('.html') || url.pathname === '/') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Clone the response and update cache
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
           return response;
+        })
+        .catch(() => {
+          // Fallback to cache if network fails
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // Cache-first strategy for other resources (CSS, JS, images)
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => {
+          if (response) {
+            return response;
+          }
+          return fetch(event.request);
         }
-        return fetch(event.request);
-      }
-    )
-  );
+      )
+    );
+  }
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and take control immediately
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -45,10 +69,14 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Take control of all pages immediately
+      return self.clients.claim();
     })
   );
 });
