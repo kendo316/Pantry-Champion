@@ -619,6 +619,14 @@ body {
     text-align: center;
 }
 
+.code-display code.invite-url {
+    font-size: 0.9rem;
+    letter-spacing: normal;
+    word-break: break-all;
+    color: var(--primary-color);
+    text-align: left;
+}
+
 /* Toast Notifications */
 .toast-container {
     position: fixed;

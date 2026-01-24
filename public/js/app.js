@@ -93,6 +93,8 @@ const saveBulkItemsBtn = document.getElementById('save-bulk-items');
 
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+const pantryInviteUrl = document.getElementById('pantry-invite-url');
+const copyUrlBtn = document.getElementById('copy-url-btn');
 const pantryCodeDisplay = document.getElementById('pantry-code-display');
 const copyCodeBtn = document.getElementById('copy-code-btn');
 const userEmailDisplay = document.getElementById('user-email-display');
@@ -239,6 +241,7 @@ function setupEventListeners() {
 
     // Settings modal
     closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
+    copyUrlBtn.addEventListener('click', copyInviteUrl);
     copyCodeBtn.addEventListener('click', copyPantryCode);
     openBulkEntryBtn.addEventListener('click', openBulkModal);
 }
@@ -583,6 +586,11 @@ function updateStats() {
 function updateSettingsDisplay() {
     if (currentPantryId) {
         pantryCodeDisplay.textContent = currentPantryId;
+
+        // Generate shareable invite URL
+        const baseUrl = window.location.origin + window.location.pathname;
+        const inviteUrl = `${baseUrl}?invite=${currentPantryId}`;
+        pantryInviteUrl.textContent = inviteUrl;
     }
     if (currentUser) {
         userEmailDisplay.textContent = currentUser.email;
@@ -1096,6 +1104,18 @@ function copyPantryCode() {
         });
     } else {
         showToast('Error copying code', 'error');
+    }
+}
+
+function copyInviteUrl() {
+    const url = pantryInviteUrl.textContent;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Invite link copied - share it with your household!', 'success');
+        });
+    } else {
+        showToast('Error copying link', 'error');
     }
 }
 
