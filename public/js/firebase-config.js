@@ -1,14 +1,11 @@
 // Firebase configuration
-// Replace these values with your actual Firebase project credentials
-// Get these from: Firebase Console > Project Settings > Your apps > SDK setup and configuration
-
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyC-dFh8P2ElM-Mhv4oPpDQ_HInKNiqwBMA",
+  authDomain: "pantry-champion.firebaseapp.com",
+  projectId: "pantry-champion",
+  storageBucket: "pantry-champion.firebasestorage.app",
+  messagingSenderId: "343111846341",
+  appId: "1:343111846341:web:1e7ef2ee2753ebb32ba3ac"
 };
 
 // Initialize Firebase (will be imported by app.js)
