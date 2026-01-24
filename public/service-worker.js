@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pantry-champion-v1';
+const CACHE_NAME = 'pantry-champion-v2';
 const urlsToCache = [
   '/',
   '/index.html',
