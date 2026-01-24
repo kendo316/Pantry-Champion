@@ -29,6 +29,36 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Safe localStorage wrapper for Safari private mode compatibility
+function safeLocalStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (e) {
+        console.warn('localStorage not available (Safari private mode?):', e);
+        return false;
+    }
+}
+
+function safeLocalStorageGet(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch (e) {
+        console.warn('localStorage not available (Safari private mode?):', e);
+        return null;
+    }
+}
+
+function safeLocalStorageRemove(key) {
+    try {
+        localStorage.removeItem(key);
+        return true;
+    } catch (e) {
+        console.warn('localStorage not available (Safari private mode?):', e);
+        return false;
+    }
+}
+
 // App State
 let currentUser = null;
 let currentPantryId = null;
@@ -148,7 +178,7 @@ function checkForInviteCode() {
 
     if (inviteCode) {
         // Store the invite code so it persists through login/signup
-        localStorage.setItem('pendingInvite', inviteCode.toUpperCase());
+        safeLocalStorageSet('pendingInvite', inviteCode.toUpperCase());
 
         // Pre-fill the pantry code input if visible
         if (pantryCodeInput) {
@@ -286,19 +316,19 @@ async function handleSignup() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
         // Check if there's a pending invite code
-        const pendingInvite = localStorage.getItem('pendingInvite');
+        const pendingInvite = safeLocalStorageGet('pendingInvite');
 
         if (pendingInvite) {
             // User is signing up to join an existing pantry
             try {
                 await joinPantryWithCode(userCredential.user.uid, pendingInvite);
-                localStorage.removeItem('pendingInvite'); // Clear the pending invite
+                safeLocalStorageRemove('pendingInvite'); // Clear the pending invite
                 showToast('Account created and joined pantry successfully', 'success');
             } catch (error) {
                 console.error('Error joining pantry after signup:', error);
                 // Fallback: create new pantry if join fails
                 await createNewPantry(userCredential.user.uid);
-                localStorage.removeItem('pendingInvite');
+                safeLocalStorageRemove('pendingInvite');
                 showToast('Account created (could not join pantry, created new one)', 'warning');
             }
         } else {
@@ -396,19 +426,19 @@ async function createNewPantry(userId) {
 async function loadUserPantry() {
     try {
         // Check if there's a pending invite (for existing users logging in via invite link)
-        const pendingInvite = localStorage.getItem('pendingInvite');
+        const pendingInvite = safeLocalStorageGet('pendingInvite');
 
         if (pendingInvite) {
             try {
                 await joinPantryWithCode(currentUser.uid, pendingInvite);
-                localStorage.removeItem('pendingInvite');
+                safeLocalStorageRemove('pendingInvite');
                 showToast('Joined pantry successfully', 'success');
                 setupRealtimeListeners();
                 updateSettingsDisplay();
                 return;
             } catch (error) {
                 console.error('Error joining pantry from invite:', error);
-                localStorage.removeItem('pendingInvite');
+                safeLocalStorageRemove('pendingInvite');
                 showToast('Invalid invite code', 'error');
                 // Continue to load user's existing pantry
             }
