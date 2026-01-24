@@ -99,6 +99,8 @@ const pantryCodeDisplay = document.getElementById('pantry-code-display');
 const copyCodeBtn = document.getElementById('copy-code-btn');
 const userEmailDisplay = document.getElementById('user-email-display');
 const openBulkEntryBtn = document.getElementById('open-bulk-entry-btn');
+const joinPantryCodeInput = document.getElementById('join-pantry-code-input');
+const joinPantryBtn = document.getElementById('join-pantry-btn');
 
 const toastContainer = document.getElementById('toast-container');
 
@@ -244,6 +246,7 @@ function setupEventListeners() {
     copyUrlBtn.addEventListener('click', copyInviteUrl);
     copyCodeBtn.addEventListener('click', copyPantryCode);
     openBulkEntryBtn.addEventListener('click', openBulkModal);
+    joinPantryBtn.addEventListener('click', handleJoinPantryFromSettings);
 }
 
 // Authentication Functions
@@ -1116,6 +1119,33 @@ function copyInviteUrl() {
         });
     } else {
         showToast('Error copying link', 'error');
+    }
+}
+
+async function handleJoinPantryFromSettings() {
+    const code = joinPantryCodeInput.value.trim().toUpperCase();
+
+    if (!code) {
+        showToast('Please enter a pantry code', 'error');
+        return;
+    }
+
+    if (!currentUser) {
+        showToast('Please sign in first', 'error');
+        return;
+    }
+
+    try {
+        await joinPantryWithCode(currentUser.uid, code);
+        currentPantryId = code;
+        setupRealtimeListeners();
+        showToast('Joined pantry successfully', 'success');
+        joinPantryCodeInput.value = ''; // Clear the input
+        updateSettingsDisplay(); // Update the displayed pantry code
+        closeSettingsModal(); // Close the modal
+    } catch (error) {
+        console.error('Join pantry error:', error);
+        showToast('Error joining pantry', 'error');
     }
 }
 
