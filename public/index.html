@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c5f8d">
+    <title>Pantry Champion</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Loading Pantry Champion...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen hidden">
+        <div class="login-container">
+            <h1>🏆 Pantry Champion</h1>
+            <p class="subtitle">Shared pantry management for your household</p>
+
+            <div class="login-form">
+                <input type="email" id="email" placeholder="Email" autocomplete="email">
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                <button id="login-btn" class="btn btn-primary">Sign In</button>
+                <button id="signup-btn" class="btn btn-secondary">Create Account</button>
+            </div>
+
+            <div class="pantry-code-section">
+                <p class="or-divider">OR</p>
+                <input type="text" id="pantry-code" placeholder="Enter shared pantry code">
+                <button id="join-pantry-btn" class="btn btn-secondary">Join Pantry</button>
+            </div>
+
+            <p class="help-text">Use the same pantry code to sync with your household</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Pantry Champion</h1>
+            <div class="header-actions">
+                <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙️</button>
+                <button id="logout-btn" class="icon-btn" aria-label="Logout">🚪</button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-view="pantry">
+                📦 Pantry
+            </button>
+            <button class="nav-tab" data-view="restock">
+                🛒 Restock Queue
+            </button>
+        </nav>
+
+        <!-- Pantry View -->
+        <div id="pantry-view" class="view active">
+            <!-- Pantry Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat">
+                    <span class="stat-label">Items Tracked</span>
+                    <span class="stat-value" id="total-items">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Coverage</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="coverage-progress"></div>
+                    </div>
+                    <span class="stat-value" id="coverage-percent">0%</span>
+                </div>
+            </div>
+
+            <!-- Search and Actions -->
+            <div class="action-bar">
+                <input type="search" id="pantry-search" placeholder="Search pantry..." class="search-input">
+                <button id="add-item-btn" class="btn btn-primary">+ Add Item</button>
+            </div>
+
+            <!-- Export to ChatGPT Button -->
+            <button id="export-chatgpt-btn" class="btn btn-export">
+                💬 Get Dinner Ideas
+            </button>
+
+            <!-- Category Filter -->
+            <div class="filter-chips">
+                <button class="filter-chip active" data-category="all">All</button>
+                <button class="filter-chip" data-category="Proteins">Proteins</button>
+                <button class="filter-chip" data-category="Dairy and Eggs">Dairy</button>
+                <button class="filter-chip" data-category="Produce">Produce</button>
+                <button class="filter-chip" data-category="Grains Beans Pasta">Grains</button>
+                <button class="filter-chip" data-category="Canned Goods">Canned</button>
+                <button class="filter-chip" data-category="Condiments and Oils">Condiments</button>
+                <button class="filter-chip" data-category="Spices">Spices</button>
+                <button class="filter-chip" data-category="Baking Supplies">Baking</button>
+            </div>
+
+            <!-- Pantry Items List -->
+            <div id="pantry-list" class="items-list">
+                <!-- Items will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Restock Queue View -->
+        <div id="restock-view" class="view">
+            <div class="action-bar">
+                <button id="clear-completed-btn" class="btn btn-secondary">Clear Completed</button>
+                <button id="voice-add-btn" class="btn btn-primary">🎤 Voice Add</button>
+            </div>
+
+            <div class="restock-instructions">
+                <p>💡 Tap the microphone or use your NFC tag to add items via voice</p>
+            </div>
+
+            <div id="restock-list" class="items-list">
+                <!-- Restock items will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="item-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Item</h2>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="item-form">
+                    <label for="item-name">Item Name *</label>
+                    <input type="text" id="item-name" required autocomplete="off">
+
+                    <label for="item-category">Category *</label>
+                    <select id="item-category" required>
+                        <option value="">Select category...</option>
+                        <option value="Proteins">Proteins</option>
+                        <option value="Dairy and Eggs">Dairy and Eggs</option>
+                        <option value="Produce">Produce</option>
+                        <option value="Grains Beans Pasta">Grains, Beans, Pasta</option>
+                        <option value="Canned Goods">Canned Goods</option>
+                        <option value="Condiments and Oils">Condiments and Oils</option>
+                        <option value="Spices">Spices</option>
+                        <option value="Baking Supplies">Baking Supplies</option>
+                    </select>
+
+                    <label>Status</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="in-stock" checked>
+                            <span>In Stock</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="status" value="needs-restock">
+                            <span>Needs Restock</span>
+                        </label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancel-modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Entry Modal -->
+    <div id="bulk-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Bulk Add Items</h2>
+                <button class="close-btn" id="close-bulk-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text">Enter one item per line. Format: item name, category (optional)</p>
+                <textarea id="bulk-items" rows="10" placeholder="olive oil&#10;black beans&#10;ground beef, Proteins"></textarea>
+
+                <label for="bulk-category">Default Category (for items without specified category)</label>
+                <select id="bulk-category">
+                    <option value="">Select category...</option>
+                    <option value="Proteins">Proteins</option>
+                    <option value="Dairy and Eggs">Dairy and Eggs</option>
+                    <option value="Produce">Produce</option>
+                    <option value="Grains Beans Pasta">Grains, Beans, Pasta</option>
+                    <option value="Canned Goods">Canned Goods</option>
+                    <option value="Condiments and Oils">Condiments and Oils</option>
+                    <option value="Spices">Spices</option>
+                    <option value="Baking Supplies">Baking Supplies</option>
+                </select>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-bulk-modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-bulk-items">Add Items</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="close-btn" id="close-settings-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>Pantry Code</h3>
+                    <p class="help-text">Share this code with your household to sync pantries</p>
+                    <div class="code-display">
+                        <code id="pantry-code-display">Loading...</code>
+                        <button id="copy-code-btn" class="btn btn-secondary">Copy</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Bulk Entry</h3>
+                    <button id="open-bulk-entry-btn" class="btn btn-secondary">Open Bulk Entry</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Account</h3>
+                    <p id="user-email-display">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Firebase -->
+    <script type="module" src="/js/firebase-config.js"></script>
+    <script type="module" src="/js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>

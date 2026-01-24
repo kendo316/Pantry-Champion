@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is a member of the pantry
+    function isMemberOfPantry(pantryId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.pantryId == pantryId;
+    }
+
+    // Users can read/write their own user document
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Pantry access - users can access pantries they're members of
+    match /pantries/{pantryId} {
+      allow read, write: if isMemberOfPantry(pantryId);
+
+      // Items subcollection
+      match /items/{itemId} {
+        allow read, write: if isMemberOfPantry(pantryId);
+      }
+
+      // Restock subcollection
+      match /restock/{restockId} {
+        allow read, write: if isMemberOfPantry(pantryId);
+      }
+    }
+  }
+}

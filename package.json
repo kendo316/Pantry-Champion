@@ -1,0 +1,24 @@
+{
+  "name": "pantry-champion",
+  "version": "1.0.0",
+  "description": "Shared pantry management system with voice input and NFC integration",
+  "main": "public/index.html",
+  "scripts": {
+    "dev": "cd public && python3 -m http.server 8000",
+    "deploy": "firebase deploy"
+  },
+  "keywords": [
+    "pantry",
+    "inventory",
+    "meal-planning",
+    "pwa",
+    "firebase",
+    "voice-input",
+    "nfc"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
