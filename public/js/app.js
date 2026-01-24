@@ -100,7 +100,7 @@ const copyCodeBtn = document.getElementById('copy-code-btn');
 const userEmailDisplay = document.getElementById('user-email-display');
 const openBulkEntryBtn = document.getElementById('open-bulk-entry-btn');
 const joinPantryCodeInput = document.getElementById('join-pantry-code-input');
-const joinPantryBtn = document.getElementById('join-pantry-btn');
+const joinPantrySettingsBtn = document.getElementById('join-pantry-settings-btn');
 
 const toastContainer = document.getElementById('toast-container');
 
@@ -246,7 +246,7 @@ function setupEventListeners() {
     copyUrlBtn.addEventListener('click', copyInviteUrl);
     copyCodeBtn.addEventListener('click', copyPantryCode);
     openBulkEntryBtn.addEventListener('click', openBulkModal);
-    joinPantryBtn.addEventListener('click', handleJoinPantryFromSettings);
+    joinPantrySettingsBtn.addEventListener('click', handleJoinPantryFromSettings);
 }
 
 // Authentication Functions
