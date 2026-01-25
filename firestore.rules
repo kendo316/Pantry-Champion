@@ -21,7 +21,10 @@ service cloud.firestore {
 
     // Pantry access - users can access pantries they're members of
     match /pantries/{pantryId} {
-      allow read, write: if isMemberOfPantry(pantryId);
+      // Allow authenticated users to read a pantry to verify invite codes
+      allow get: if isAuthenticated();
+      // Only members can list pantries or write to them
+      allow list, write: if isMemberOfPantry(pantryId);
 
       // Items subcollection
       match /items/{itemId} {

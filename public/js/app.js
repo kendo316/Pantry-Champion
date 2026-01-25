@@ -381,7 +381,7 @@ async function joinPantryWithCode(userId, code) {
         pantryId: code,
         email: auth.currentUser.email,
         joinedAt: serverTimestamp()
-    });
+    }, { merge: true });
 
     currentPantryId = code;
 }
