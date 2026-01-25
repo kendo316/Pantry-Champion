@@ -123,6 +123,9 @@ const saveBulkItemsBtn = document.getElementById('save-bulk-items');
 
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal');
+const pantryNameInput = document.getElementById('pantry-name-input');
+const updatePantryNameBtn = document.getElementById('update-pantry-name-btn');
+const pantryNameSubtitle = document.getElementById('pantry-name-subtitle');
 const pantryInviteUrl = document.getElementById('pantry-invite-url');
 const copyUrlBtn = document.getElementById('copy-url-btn');
 const pantryCodeDisplay = document.getElementById('pantry-code-display');
@@ -273,6 +276,7 @@ function setupEventListeners() {
 
     // Settings modal
     closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
+    updatePantryNameBtn.addEventListener('click', handleUpdatePantryName);
     copyUrlBtn.addEventListener('click', copyInviteUrl);
     copyCodeBtn.addEventListener('click', copyPantryCode);
     openBulkEntryBtn.addEventListener('click', openBulkModal);
@@ -321,9 +325,9 @@ async function handleSignup() {
         if (pendingInvite) {
             // User is signing up to join an existing pantry
             try {
-                await joinPantryWithCode(userCredential.user.uid, pendingInvite);
+                const pantryName = await joinPantryWithCode(userCredential.user.uid, pendingInvite);
                 safeLocalStorageRemove('pendingInvite'); // Clear the pending invite
-                showToast('Account created and joined pantry successfully', 'success');
+                showToast(`Welcome to ${pantryName}!`, 'success');
             } catch (error) {
                 console.error('Error joining pantry after signup:', error);
                 // Fallback: create new pantry if join fails
@@ -358,10 +362,10 @@ async function handleJoinPantry() {
     }
 
     try {
-        await joinPantryWithCode(currentUser.uid, code);
+        const pantryName = await joinPantryWithCode(currentUser.uid, code);
         currentPantryId = code;
         setupRealtimeListeners();
-        showToast('Joined pantry successfully', 'success');
+        showToast(`Welcome to ${pantryName}!`, 'success');
         showApp();
     } catch (error) {
         console.error('Join pantry error:', error);
@@ -378,6 +382,9 @@ async function joinPantryWithCode(userId, code) {
         throw new Error('Pantry code not found');
     }
 
+    // Get pantry name for welcome message
+    const pantryName = pantryDoc.data().name || 'My Pantry';
+
     // Update user's pantry reference
     await setDoc(doc(db, 'users', userId), {
         pantryId: code,
@@ -386,6 +393,9 @@ async function joinPantryWithCode(userId, code) {
     }, { merge: true });
 
     currentPantryId = code;
+
+    // Return pantry name for welcome message
+    return pantryName;
 }
 
 async function handleLogout() {
@@ -432,9 +442,9 @@ async function loadUserPantry() {
 
         if (pendingInvite) {
             try {
-                await joinPantryWithCode(currentUser.uid, pendingInvite);
+                const pantryName = await joinPantryWithCode(currentUser.uid, pendingInvite);
                 safeLocalStorageRemove('pendingInvite');
-                showToast('Joined pantry successfully', 'success');
+                showToast(`Welcome to ${pantryName}!`, 'success');
                 setupRealtimeListeners();
                 updateSettingsDisplay();
                 return;
@@ -618,7 +628,7 @@ function updateStats() {
     coverageProgressEl.style.width = `${coverage}%`;
 }
 
-function updateSettingsDisplay() {
+async function updateSettingsDisplay() {
     if (currentPantryId) {
         pantryCodeDisplay.textContent = currentPantryId;
 
@@ -626,9 +636,59 @@ function updateSettingsDisplay() {
         const baseUrl = window.location.origin + window.location.pathname;
         const inviteUrl = `${baseUrl}?invite=${currentPantryId}`;
         pantryInviteUrl.textContent = inviteUrl;
+
+        // Load and display pantry name
+        await loadPantryName();
     }
     if (currentUser) {
         userEmailDisplay.textContent = currentUser.email;
+    }
+}
+
+async function loadPantryName() {
+    if (!currentPantryId) return;
+
+    try {
+        const pantryDoc = await getDoc(doc(db, 'pantries', currentPantryId));
+        if (pantryDoc.exists()) {
+            const pantryName = pantryDoc.data().name || 'My Pantry';
+            pantryNameInput.value = pantryName;
+            pantryNameSubtitle.textContent = pantryName;
+        }
+    } catch (error) {
+        console.error('Error loading pantry name:', error);
+    }
+}
+
+async function handleUpdatePantryName() {
+    const newName = pantryNameInput.value.trim();
+
+    if (!newName) {
+        showToast('Please enter a pantry name', 'error');
+        return;
+    }
+
+    if (!currentPantryId) {
+        showToast('No pantry found', 'error');
+        return;
+    }
+
+    try {
+        updatePantryNameBtn.disabled = true;
+        updatePantryNameBtn.textContent = 'Updating...';
+
+        await updateDoc(doc(db, 'pantries', currentPantryId), {
+            name: newName
+        });
+
+        pantryNameSubtitle.textContent = newName;
+        showToast('Pantry name updated!', 'success');
+    } catch (error) {
+        console.error('Error updating pantry name:', error);
+        showToast('Failed to update pantry name', 'error');
+    } finally {
+        updatePantryNameBtn.disabled = false;
+        updatePantryNameBtn.textContent = 'Update';
     }
 }
 
@@ -1168,10 +1228,10 @@ async function handleJoinPantryFromSettings() {
     }
 
     try {
-        await joinPantryWithCode(currentUser.uid, code);
+        const pantryName = await joinPantryWithCode(currentUser.uid, code);
         currentPantryId = code;
         setupRealtimeListeners();
-        showToast('Joined pantry successfully', 'success');
+        showToast(`Welcome to ${pantryName}!`, 'success');
         joinPantryCodeInput.value = ''; // Clear the input
         updateSettingsDisplay(); // Update the displayed pantry code
         closeSettingsModal(); // Close the modal

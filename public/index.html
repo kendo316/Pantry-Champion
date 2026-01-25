@@ -45,7 +45,10 @@
     <div id="app" class="hidden">
         <!-- Header -->
         <header class="app-header">
-            <h1>Pantry Champion</h1>
+            <div>
+                <h1>Pantry Champion</h1>
+                <p id="pantry-name-subtitle" class="help-text" style="margin: 0; font-size: 0.9rem; opacity: 0.8;">Loading...</p>
+            </div>
             <div class="header-actions">
                 <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙️</button>
                 <button id="logout-btn" class="icon-btn" aria-label="Logout">🚪</button>
@@ -212,6 +215,15 @@
                 <button class="close-btn" id="close-settings-modal">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="settings-section">
+                    <h3>Pantry Name</h3>
+                    <p class="help-text">Give your pantry a name so everyone knows which pantry they're in</p>
+                    <div class="code-display">
+                        <input type="text" id="pantry-name-input" placeholder="My Pantry" maxlength="50" style="flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                        <button id="update-pantry-name-btn" class="btn btn-primary">Update</button>
+                    </div>
+                </div>
+
                 <div class="settings-section">
                     <h3>Invite Your Household</h3>
                     <p class="help-text">Share this link with your household - they'll automatically join your pantry when they sign up</p>
