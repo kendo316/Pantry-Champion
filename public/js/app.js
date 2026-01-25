@@ -477,6 +477,20 @@ async function loadUserPantry() {
 function setupRealtimeListeners() {
     if (!currentPantryId) return;
 
+    // Listen to pantry document for name changes
+    const pantryDocRef = doc(db, 'pantries', currentPantryId);
+    onSnapshot(pantryDocRef, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+            const pantryName = docSnapshot.data().name || 'My Pantry';
+            pantryNameSubtitle.textContent = pantryName;
+            if (pantryNameInput) {
+                pantryNameInput.value = pantryName;
+            }
+        }
+    }, (error) => {
+        console.error('Error listening to pantry document:', error);
+    });
+
     // Listen to pantry items
     const pantryItemsRef = collection(db, 'pantries', currentPantryId, 'items');
     onSnapshot(pantryItemsRef, (snapshot) => {
@@ -1181,8 +1195,8 @@ function copyToClipboard(text) {
 }
 
 // Settings Functions
-function openSettingsModal() {
-    updateSettingsDisplay();
+async function openSettingsModal() {
+    await updateSettingsDisplay();
     settingsModal.classList.remove('hidden');
 }
 
