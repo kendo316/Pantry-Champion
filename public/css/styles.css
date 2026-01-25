@@ -6,17 +6,18 @@
 }
 
 :root {
-    --primary-color: #2c5f8d;
-    --primary-dark: #1e4465;
-    --secondary-color: #5d9c59;
-    --accent-color: #ff6b6b;
-    --background: #f5f5f5;
-    --surface: #ffffff;
-    --text-primary: #333333;
-    --text-secondary: #666666;
-    --border-color: #e0e0e0;
-    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
+    --primary-color: #1e6f74;
+    --primary-dark: #165459;
+    --secondary-color: #6b9b4a;
+    --accent-color: #d89735;
+    --accent-warm: #e8a44c;
+    --background: #f8f6f2;
+    --surface: #fdfbf7;
+    --text-primary: #2d2d2d;
+    --text-secondary: #5a5a5a;
+    --border-color: #e8e4dc;
+    --shadow: 0 2px 8px rgba(30, 111, 116, 0.1);
+    --shadow-lg: 0 4px 16px rgba(30, 111, 116, 0.15);
 }
 
 body {
@@ -183,7 +184,7 @@ body {
 
 .btn-export {
     width: 100%;
-    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
     color: white;
     font-size: 1.1rem;
     padding: 16px;
@@ -429,8 +430,8 @@ body {
 }
 
 .item-action-btn.restock {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    border-color: var(--accent-warm);
+    color: var(--accent-warm);
 }
 
 .item-action-btn.in-stock {
@@ -439,18 +440,18 @@ body {
 }
 
 .item-action-btn.delete {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+    border-color: #e07a3f;
+    color: #e07a3f;
 }
 
 /* Restock Items */
 .restock-item {
-    border-left: 4px solid var(--accent-color);
+    border-left: 4px solid var(--accent-warm);
 }
 
 .restock-item.urgent {
-    border-left-color: #ff3333;
-    background: #fff5f5;
+    border-left-color: #e07a3f;
+    background: #fef6ed;
 }
 
 .restock-item.completed {
@@ -465,7 +466,7 @@ body {
 .priority-badge {
     display: inline-block;
     padding: 4px 8px;
-    background: #ff3333;
+    background: #e07a3f;
     color: white;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -474,7 +475,7 @@ body {
 }
 
 .restock-instructions {
-    background: #e3f2fd;
+    background: #f4f0e8;
     padding: 16px;
     border-radius: 8px;
     margin-bottom: 20px;
@@ -656,7 +657,7 @@ body {
 }
 
 .toast.error {
-    background: var(--accent-color);
+    background: #e07a3f;
 }
 
 @keyframes slideUp {
