@@ -351,7 +351,9 @@ async function handleJoinPantry() {
     }
 
     if (!currentUser) {
-        showToast('Please sign in first', 'error');
+        // Store the pantry code so it persists through login/signup
+        safeLocalStorageSet('pendingInvite', code);
+        showToast('Please sign in or create an account to join this pantry', 'error');
         return;
     }
 
