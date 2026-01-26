@@ -855,14 +855,21 @@ window.toggleItemStatus = async function(itemId, currentStatus) {
         if (newStatus === 'needs-restock') {
             const item = pantryItems.find(i => i.id === itemId);
             if (item) {
-                const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
-                await setDoc(restockRef, {
-                    name: item.name,
-                    category: item.category,
-                    priority: 'normal',
-                    completed: false,
-                    createdAt: serverTimestamp()
-                });
+                // Check for duplicate in restock queue (case-insensitive)
+                const existingRestockItem = restockItems.find(restockItem =>
+                    restockItem.name.toLowerCase() === item.name.toLowerCase() && !restockItem.completed
+                );
+
+                if (!existingRestockItem) {
+                    const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
+                    await setDoc(restockRef, {
+                        name: item.name,
+                        category: item.category,
+                        priority: 'normal',
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
+                }
             }
         }
 
@@ -1049,6 +1056,17 @@ async function processVoiceInput(text, categoryOverride = null) {
 
     // Use provided category or guess based on common items
     const category = categoryOverride || guessCategory(itemName);
+
+    // Check for duplicate in restock queue (case-insensitive)
+    const existingRestockItem = restockItems.find(item =>
+        item.name.toLowerCase() === itemName.toLowerCase() && !item.completed
+    );
+
+    if (existingRestockItem) {
+        showToast(`"${itemName}" is already on your restock list`, 'info');
+        switchView('restock');
+        return;
+    }
 
     try {
         // Add to restock queue
