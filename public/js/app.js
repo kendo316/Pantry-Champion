@@ -146,7 +146,8 @@ const CATEGORIES = [
     'Canned Goods',
     'Condiments and Oils',
     'Spices',
-    'Baking Supplies'
+    'Baking Supplies',
+    'Supplies'
 ];
 
 // Initialize App
@@ -1110,6 +1111,11 @@ function guessCategory(itemName) {
         return 'Baking Supplies';
     }
 
+    // Supplies (non-food household items)
+    if (/(foil|aluminum|baggie|bag|ziploc|ziplock|soap|paper towel|towel|plastic wrap|saran|trash|garbage|napkin|tissue|cleaning|cleaner|sponge|detergent|dishwasher|laundry|wipes)/i.test(lower)) {
+        return 'Supplies';
+    }
+
     // Default
     return 'Condiments and Oils';
 }
@@ -1121,14 +1127,16 @@ function exportToChatGPT() {
         return;
     }
 
-    // Group items by category
+    // Group items by category (excluding Supplies which aren't food ingredients)
     const itemsByCategory = {};
     CATEGORIES.forEach(cat => {
-        itemsByCategory[cat] = [];
+        if (cat !== 'Supplies') {
+            itemsByCategory[cat] = [];
+        }
     });
 
     pantryItems
-        .filter(item => item.status === 'in-stock')
+        .filter(item => item.status === 'in-stock' && item.category !== 'Supplies')
         .forEach(item => {
             if (itemsByCategory[item.category]) {
                 itemsByCategory[item.category].push(item.name);
@@ -1139,6 +1147,7 @@ function exportToChatGPT() {
     let prompt = "Here's what's currently stocked in my pantry:\n\n";
 
     CATEGORIES.forEach(category => {
+        if (category === 'Supplies') return; // Skip non-food items
         const items = itemsByCategory[category];
         if (items.length > 0) {
             prompt += `**${category}:**\n`;
