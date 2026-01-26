@@ -67,6 +67,8 @@ let restockItems = [];
 let currentFilter = 'all';
 let searchQuery = '';
 let editingItemId = null;
+let isRecognitionActive = false;
+let currentRecognition = null;
 
 // DOM Elements - Screens
 const loadingScreen = document.getElementById('loading-screen');
@@ -971,14 +973,22 @@ function startVoiceInput() {
         return;
     }
 
+    // If recognition is already active, stop it
+    if (isRecognitionActive && currentRecognition) {
+        currentRecognition.stop();
+        return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
+    currentRecognition = recognition;
 
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+        isRecognitionActive = true;
         voiceAddBtn.textContent = '🎤 Listening...';
         voiceAddBtn.style.background = 'var(--accent-color)';
     };
@@ -991,16 +1001,29 @@ function startVoiceInput() {
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         showToast('Voice input error: ' + event.error, 'error');
+        isRecognitionActive = false;
+        currentRecognition = null;
         voiceAddBtn.textContent = '🎤 Voice Add';
         voiceAddBtn.style.background = '';
     };
 
     recognition.onend = () => {
+        isRecognitionActive = false;
+        currentRecognition = null;
         voiceAddBtn.textContent = '🎤 Voice Add';
         voiceAddBtn.style.background = '';
     };
 
-    recognition.start();
+    try {
+        recognition.start();
+    } catch (error) {
+        console.error('Failed to start recognition:', error);
+        showToast('Could not start voice input', 'error');
+        isRecognitionActive = false;
+        currentRecognition = null;
+        voiceAddBtn.textContent = '🎤 Voice Add';
+        voiceAddBtn.style.background = '';
+    }
 }
 
 async function processVoiceInput(text, categoryOverride = null) {
