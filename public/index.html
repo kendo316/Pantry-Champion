@@ -29,6 +29,7 @@
                 <input type="password" id="password" placeholder="Password" autocomplete="current-password">
                 <button id="login-btn" class="btn btn-primary">Sign In</button>
                 <button id="signup-btn" class="btn btn-secondary">Create Account</button>
+                <a href="#" id="forgot-password-link" class="forgot-password-link">Forgot Password?</a>
             </div>
 
             <div class="pantry-code-section">
@@ -258,6 +259,24 @@
                 <div class="settings-section">
                     <h3>Account</h3>
                     <p id="user-email-display">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div id="password-reset-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <button class="close-btn" id="close-password-reset-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="help-text">Enter your email address and we'll send you a link to reset your password.</p>
+                <input type="email" id="reset-email" placeholder="Email" autocomplete="email" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; margin-top: 12px;">
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" id="cancel-password-reset">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="send-password-reset">Send Reset Link</button>
                 </div>
             </div>
         </div>

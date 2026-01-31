@@ -5,7 +5,8 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
-    onAuthStateChanged
+    onAuthStateChanged,
+    sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import {
     getFirestore,
@@ -137,6 +138,13 @@ const openBulkEntryBtn = document.getElementById('open-bulk-entry-btn');
 const joinPantryCodeInput = document.getElementById('join-pantry-code-input');
 const joinPantrySettingsBtn = document.getElementById('join-pantry-settings-btn');
 
+const passwordResetModal = document.getElementById('password-reset-modal');
+const closePasswordResetModalBtn = document.getElementById('close-password-reset-modal');
+const cancelPasswordResetBtn = document.getElementById('cancel-password-reset');
+const sendPasswordResetBtn = document.getElementById('send-password-reset');
+const resetEmailInput = document.getElementById('reset-email');
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+
 const toastContainer = document.getElementById('toast-container');
 
 // Categories for the app
@@ -236,6 +244,20 @@ function setupEventListeners() {
     loginBtn.addEventListener('click', handleLogin);
     signupBtn.addEventListener('click', handleSignup);
     joinPantryBtn.addEventListener('click', handleJoinPantry);
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        openPasswordResetModal();
+    });
+
+    // Password Reset Modal
+    closePasswordResetModalBtn.addEventListener('click', closePasswordResetModal);
+    cancelPasswordResetBtn.addEventListener('click', closePasswordResetModal);
+    sendPasswordResetBtn.addEventListener('click', handlePasswordReset);
+    resetEmailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handlePasswordReset();
+        }
+    });
 
     // Navigation
     navTabs.forEach(tab => {
@@ -409,6 +431,45 @@ async function handleLogout() {
         console.error('Logout error:', error);
         showToast('Error logging out', 'error');
     }
+}
+
+// Password Reset
+async function handlePasswordReset() {
+    const email = resetEmailInput.value.trim();
+
+    if (!email) {
+        showToast('Please enter your email address', 'error');
+        return;
+    }
+
+    try {
+        await sendPasswordResetEmail(auth, email);
+        showToast('Password reset email sent! Check your inbox.', 'success');
+        passwordResetModal.classList.add('hidden');
+        resetEmailInput.value = '';
+    } catch (error) {
+        console.error('Password reset error:', error);
+        if (error.code === 'auth/user-not-found') {
+            showToast('No account found with this email', 'error');
+        } else if (error.code === 'auth/invalid-email') {
+            showToast('Invalid email address', 'error');
+        } else {
+            showToast(error.message, 'error');
+        }
+    }
+}
+
+function openPasswordResetModal() {
+    passwordResetModal.classList.remove('hidden');
+    // Pre-fill with email if already entered
+    if (emailInput.value.trim()) {
+        resetEmailInput.value = emailInput.value.trim();
+    }
+}
+
+function closePasswordResetModal() {
+    passwordResetModal.classList.add('hidden');
+    resetEmailInput.value = '';
 }
 
 // Pantry Management

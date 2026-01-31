@@ -114,6 +114,18 @@ body {
     border-color: var(--primary-color);
 }
 
+.forgot-password-link {
+    text-align: center;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-top: 8px;
+}
+
+.forgot-password-link:hover {
+    text-decoration: underline;
+}
+
 .pantry-code-section {
     margin-top: 24px;
     padding-top: 24px;
