@@ -652,17 +652,27 @@ function renderPantryItems() {
 }
 
 function renderRestockItems() {
-    // Sort by priority (urgent first) then by creation date
+    // Sort by: 1) Urgent first, 2) Then by category, 3) Then by name
     const sortedItems = [...restockItems].sort((a, b) => {
+        // Urgent items first
         if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
         if (a.priority !== 'urgent' && b.priority === 'urgent') return 1;
-        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+
+        // Then by category
+        const categoryA = a.category || 'Uncategorized';
+        const categoryB = b.category || 'Uncategorized';
+        if (categoryA !== categoryB) {
+            return categoryA.localeCompare(categoryB);
+        }
+
+        // Then by name
+        return a.name.localeCompare(b.name);
     });
 
     if (sortedItems.length === 0) {
         restockList.innerHTML = `
             <div class="empty-state">
-                <div class="empty-state-icon">🛒</div>
+                <div class="empty-state-icon">📝</div>
                 <h3>No items to restock</h3>
                 <p>Items flagged for restocking will appear here</p>
             </div>
@@ -671,26 +681,31 @@ function renderRestockItems() {
     }
 
     restockList.innerHTML = sortedItems.map(item => `
-        <div class="item-card restock-item ${item.priority === 'urgent' ? 'urgent' : ''} ${item.completed ? 'completed' : ''}"
+        <div class="restock-list-item ${item.priority === 'urgent' ? 'urgent' : ''} ${item.completed ? 'completed' : ''}"
              data-id="${item.id}">
-            <div class="item-status-icon">${item.completed ? '✓' : '🛒'}</div>
-            <div class="item-info">
-                <div class="item-name">
-                    ${item.name}
-                    ${item.priority === 'urgent' ? '<span class="priority-badge">URGENT</span>' : ''}
-                </div>
-                <div class="item-category">${item.category || 'Uncategorized'}</div>
-            </div>
-            <div class="item-actions">
-                <button class="item-action-btn"
-                        onclick="toggleRestockComplete('${item.id}', ${item.completed || false})">
-                    ${item.completed ? 'Undo' : 'Complete'}
-                </button>
-                <button class="item-action-btn"
+            <input type="checkbox"
+                   class="restock-checkbox"
+                   ${item.completed ? 'checked' : ''}
+                   onchange="toggleRestockComplete('${item.id}', ${item.completed || false})"
+                   id="restock-${item.id}">
+            <label for="restock-${item.id}" class="restock-item-content">
+                <span class="restock-item-name">${item.name}</span>
+                <span class="restock-item-meta">
+                    <span class="restock-item-category">${item.category || 'Uncategorized'}</span>
+                    ${item.priority === 'urgent' ? '<span class="urgent-indicator">!</span>' : ''}
+                </span>
+            </label>
+            <div class="restock-item-actions">
+                <button class="restock-action-icon"
+                        title="${item.priority === 'urgent' ? 'Mark as normal priority' : 'Mark as urgent'}"
                         onclick="toggleRestockPriority('${item.id}', '${item.priority || 'normal'}')">
-                    ${item.priority === 'urgent' ? 'Normal' : 'Urgent'}
+                    ${item.priority === 'urgent' ? '🔔' : '⚪'}
                 </button>
-                <button class="item-action-btn delete" onclick="deleteRestockItem('${item.id}')">Delete</button>
+                <button class="restock-action-icon delete"
+                        title="Delete item"
+                        onclick="deleteRestockItem('${item.id}')">
+                    🗑️
+                </button>
             </div>
         </div>
     `).join('');
@@ -810,6 +825,9 @@ async function handleSaveItem(e) {
 
     try {
         if (editingItemId) {
+            // Get the original item to check if category changed
+            const originalItem = pantryItems.find(i => i.id === editingItemId);
+
             // Update existing item
             await updateDoc(doc(db, 'pantries', currentPantryId, 'items', editingItemId), {
                 name,
@@ -817,6 +835,21 @@ async function handleSaveItem(e) {
                 status,
                 updatedAt: serverTimestamp()
             });
+
+            // If category changed, sync to restock items with matching name
+            if (originalItem && originalItem.category !== category) {
+                const matchingRestockItems = restockItems.filter(ri =>
+                    ri.name.toLowerCase() === name.toLowerCase()
+                );
+
+                for (const restockItem of matchingRestockItems) {
+                    await updateDoc(doc(db, 'pantries', currentPantryId, 'restock', restockItem.id), {
+                        category,
+                        updatedAt: serverTimestamp()
+                    });
+                }
+            }
+
             showToast('Item updated successfully', 'success');
         } else {
             // Add new item
@@ -916,20 +949,25 @@ window.toggleItemStatus = async function(itemId, currentStatus) {
         if (newStatus === 'needs-restock') {
             const item = pantryItems.find(i => i.id === itemId);
             if (item) {
-                // Check for duplicate in restock queue (case-insensitive)
+                // Normalize item name for comparison (trim and lowercase)
+                const normalizedName = item.name.trim().toLowerCase();
+
+                // Check for duplicate in restock queue (case-insensitive, trimmed)
                 const existingRestockItem = restockItems.find(restockItem =>
-                    restockItem.name.toLowerCase() === item.name.toLowerCase() && !restockItem.completed
+                    restockItem.name.trim().toLowerCase() === normalizedName && !restockItem.completed
                 );
 
                 if (!existingRestockItem) {
                     const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
                     await setDoc(restockRef, {
-                        name: item.name,
+                        name: item.name.trim(),
                         category: item.category,
                         priority: 'normal',
                         completed: false,
                         createdAt: serverTimestamp()
                     });
+                } else {
+                    showToast(`"${item.name}" is already on your restock list`, 'info');
                 }
             }
         }
@@ -960,20 +998,26 @@ window.deleteItem = async function(itemId) {
 // Restock Actions
 window.toggleRestockComplete = async function(itemId, currentCompleted) {
     try {
+        const newCompleted = !currentCompleted;
+
         await updateDoc(doc(db, 'pantries', currentPantryId, 'restock', itemId), {
-            completed: !currentCompleted,
-            updatedAt: serverTimestamp()
+            completed: newCompleted,
+            updatedAt: serverTimestamp(),
+            // Store completion date when marking as complete
+            ...(newCompleted && { completedAt: serverTimestamp() })
         });
 
-        // If marking as complete, update the pantry item to in-stock
-        if (!currentCompleted) {
+        // If marking as complete, update the pantry item to in-stock and track purchase date
+        if (newCompleted) {
             const restockItem = restockItems.find(i => i.id === itemId);
             if (restockItem) {
-                const pantryItem = pantryItems.find(i => i.name === restockItem.name);
+                const normalizedName = restockItem.name.trim().toLowerCase();
+                const pantryItem = pantryItems.find(i => i.name.trim().toLowerCase() === normalizedName);
                 if (pantryItem) {
                     await updateDoc(doc(db, 'pantries', currentPantryId, 'items', pantryItem.id), {
                         status: 'in-stock',
-                        updatedAt: serverTimestamp()
+                        updatedAt: serverTimestamp(),
+                        lastPurchasedAt: serverTimestamp()
                     });
                 }
             }
@@ -1118,9 +1162,12 @@ async function processVoiceInput(text, categoryOverride = null) {
     // Use provided category or guess based on common items
     const category = categoryOverride || guessCategory(itemName);
 
-    // Check for duplicate in restock queue (case-insensitive)
+    // Normalize for comparison
+    const normalizedName = itemName.trim().toLowerCase();
+
+    // Check for duplicate in restock queue (case-insensitive, trimmed)
     const existingRestockItem = restockItems.find(item =>
-        item.name.toLowerCase() === itemName.toLowerCase() && !item.completed
+        item.name.trim().toLowerCase() === normalizedName && !item.completed
     );
 
     if (existingRestockItem) {
@@ -1133,7 +1180,7 @@ async function processVoiceInput(text, categoryOverride = null) {
         // Add to restock queue
         const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
         await setDoc(restockRef, {
-            name: itemName,
+            name: itemName.trim(),
             category: category,
             priority: 'normal',
             completed: false,
@@ -1143,7 +1190,7 @@ async function processVoiceInput(text, categoryOverride = null) {
 
         // Check if item exists in pantry
         const existingItem = pantryItems.find(item =>
-            item.name.toLowerCase() === itemName.toLowerCase()
+            item.name.trim().toLowerCase() === normalizedName
         );
 
         if (!existingItem) {
@@ -1151,7 +1198,7 @@ async function processVoiceInput(text, categoryOverride = null) {
             if (confirm(`"${itemName}" is not in your pantry inventory. Add it now?`)) {
                 const itemRef = doc(collection(db, 'pantries', currentPantryId, 'items'));
                 await setDoc(itemRef, {
-                    name: itemName,
+                    name: itemName.trim(),
                     category: category,
                     status: 'needs-restock',
                     createdAt: serverTimestamp(),
