@@ -234,8 +234,8 @@ function checkUrlParameters() {
     const category = urlParams.get('category');
 
     if (voiceInput) {
-        // Process voice input from iOS Shortcut
-        processVoiceInput(voiceInput, category);
+        // NFC/Shortcuts: skip modal and save directly (hands-free)
+        processVoiceInput(voiceInput, category, true);
 
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -1406,7 +1406,7 @@ function startVoiceInput() {
     }
 }
 
-async function processVoiceInput(text, categoryOverride = null) {
+async function processVoiceInput(text, categoryOverride = null, silent = false) {
     // Parse natural language input
     // Examples: "olive oil", "we're out of black beans", "restock chickpeas"
 
@@ -1429,6 +1429,12 @@ async function processVoiceInput(text, categoryOverride = null) {
 
     // Use provided category or guess based on common items
     const category = categoryOverride || guessCategory(itemName);
+
+    if (silent) {
+        // NFC/Shortcuts path: save directly without showing the modal
+        await silentSaveVoiceItem(itemName, category, guessLocation(category));
+        return;
+    }
 
     // Show confirmation modal so user can verify name, category, and location
     openVoiceConfirmModal(itemName, category);
@@ -1467,9 +1473,9 @@ function guessCategory(itemName) {
         return 'Condiments and Oils';
     }
 
-    // Spices
+    // Spice-related keywords map to Condiments and Oils ('Spices' no longer exists)
     if (/(pepper|salt|cumin|paprika|oregano|basil|thyme|cinnamon|spice)/i.test(lower)) {
-        return 'Spices';
+        return 'Condiments and Oils';
     }
 
     // Baking Supplies
@@ -1505,11 +1511,68 @@ function guessLocation(category) {
     }
 }
 
+async function silentSaveVoiceItem(itemName, category, location) {
+    const normalizedName = itemName.trim().toLowerCase();
+
+    // Duplicate check: skip if already on the active restock list
+    const existingRestockItem = restockItems.find(item =>
+        item.name.trim().toLowerCase() === normalizedName && !item.completed
+    );
+    if (existingRestockItem) {
+        showToast(`"${itemName}" is already on your restock list`, 'info');
+        switchView('restock');
+        return;
+    }
+
+    try {
+        const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
+        await setDoc(restockRef, {
+            name: itemName.trim(),
+            category: category,
+            priority: 'normal',
+            completed: false,
+            createdAt: serverTimestamp(),
+            addedVia: 'voice'
+        });
+
+        const existingItem = pantryItems.find(item =>
+            item.name.trim().toLowerCase() === normalizedName
+        );
+        if (!existingItem) {
+            const itemRef = doc(collection(db, 'pantries', currentPantryId, 'items'));
+            await setDoc(itemRef, {
+                name: itemName.trim(),
+                category: category,
+                location: location,
+                status: 'needs-restock',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+        }
+
+        showToast(`Added "${itemName}" to restock queue`, 'success');
+        switchView('restock');
+    } catch (error) {
+        console.error('Error processing voice input:', error);
+        showToast('Error adding item', 'error');
+    }
+}
+
 function openVoiceConfirmModal(itemName, category) {
     pendingVoiceItem = { name: itemName, category };
     voiceConfirmNameEl.textContent = itemName;
     voiceConfirmCategoryEl.textContent = category;
     voiceConfirmLocationSelect.value = guessLocation(category);
+
+    // Warn immediately if the item is already on the active restock list
+    const normalizedName = itemName.trim().toLowerCase();
+    const existingRestockItem = restockItems.find(item =>
+        item.name.trim().toLowerCase() === normalizedName && !item.completed
+    );
+    if (existingRestockItem) {
+        showToast(`"${itemName}" is already on your restock list`, 'info');
+    }
+
     voiceConfirmModal.classList.remove('hidden');
 }
 
@@ -1526,17 +1589,6 @@ async function handleVoiceConfirm() {
     closeVoiceConfirmModal();
 
     const normalizedName = itemName.trim().toLowerCase();
-
-    // Check for duplicate in restock queue
-    const existingRestockItem = restockItems.find(item =>
-        item.name.trim().toLowerCase() === normalizedName && !item.completed
-    );
-
-    if (existingRestockItem) {
-        showToast(`"${itemName}" is already on your restock list`, 'info');
-        switchView('restock');
-        return;
-    }
 
     try {
         // Add to restock queue
