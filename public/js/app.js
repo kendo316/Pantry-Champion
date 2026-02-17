@@ -66,6 +66,8 @@ let currentPantryId = null;
 let pantryItems = [];
 let restockItems = [];
 let currentFilter = 'all';
+let currentLocation = null;
+let startupLocationSetting = 'choose';
 let searchQuery = '';
 let editingItemId = null;
 let isRecognitionActive = false;
@@ -94,6 +96,10 @@ const settingsBtn = document.getElementById('settings-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
 // DOM Elements - Pantry View
+const locationPickerEl = document.getElementById('location-picker');
+const pantryContentEl = document.getElementById('pantry-content');
+const locationNavBtns = document.querySelectorAll('.location-nav-btn');
+const locationPickBtns = document.querySelectorAll('.location-pick-btn');
 const totalItemsEl = document.getElementById('total-items');
 const coverageProgressEl = document.getElementById('coverage-progress');
 const coveragePercentEl = document.getElementById('coverage-percent');
@@ -232,6 +238,7 @@ function showApp() {
     loadingScreen.classList.add('hidden');
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
+    applyStartupLocation();
 }
 
 function showLoading() {
@@ -284,6 +291,26 @@ function setupEventListeners() {
             chip.classList.add('active');
             currentFilter = chip.dataset.category;
             renderPantryItems();
+        });
+    });
+
+    // Location nav buttons (switch location within pantry content)
+    locationNavBtns.forEach(btn => {
+        btn.addEventListener('click', () => setLocation(btn.dataset.location));
+    });
+
+    // Location pick buttons (landing screen)
+    locationPickBtns.forEach(btn => {
+        btn.addEventListener('click', () => setLocation(btn.dataset.location));
+    });
+
+    // Startup location setting radios
+    document.querySelectorAll('input[name="startup-location"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.checked) {
+                startupLocationSetting = radio.value;
+                safeLocalStorageSet('startupLocation', radio.value);
+            }
         });
     });
 
@@ -598,8 +625,47 @@ function switchView(viewName) {
     }
 }
 
+function applyStartupLocation() {
+    startupLocationSetting = safeLocalStorageGet('startupLocation') || 'choose';
+    // Sync settings radio to stored value
+    const radio = document.querySelector(`input[name="startup-location"][value="${startupLocationSetting}"]`);
+    if (radio) radio.checked = true;
+
+    if (startupLocationSetting === 'choose') {
+        showLocationPicker();
+    } else {
+        setLocation(startupLocationSetting);
+    }
+}
+
+function showLocationPicker() {
+    currentLocation = null;
+    locationPickerEl.classList.remove('hidden');
+    pantryContentEl.classList.add('hidden');
+}
+
+function setLocation(loc) {
+    currentLocation = loc;
+    locationNavBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.location === loc);
+    });
+    locationPickerEl.classList.add('hidden');
+    pantryContentEl.classList.remove('hidden');
+    // Reset category filter when switching locations
+    currentFilter = 'all';
+    filterChips.forEach(c => c.classList.remove('active'));
+    const allChip = document.querySelector('.filter-chip[data-category="all"]');
+    if (allChip) allChip.classList.add('active');
+    renderPantryItems();
+}
+
 function renderPantryItems() {
     let filteredItems = pantryItems;
+
+    // Apply location filter
+    if (currentLocation) {
+        filteredItems = filteredItems.filter(item => (item.location || 'pantry') === currentLocation);
+    }
 
     // Apply category filter
     if (currentFilter !== 'all') {
@@ -1362,6 +1428,9 @@ function copyToClipboard(text) {
 // Settings Functions
 async function openSettingsModal() {
     await updateSettingsDisplay();
+    // Sync startup location radio to current setting
+    const radio = document.querySelector(`input[name="startup-location"][value="${startupLocationSetting}"]`);
+    if (radio) radio.checked = true;
     settingsModal.classList.remove('hidden');
 }
 

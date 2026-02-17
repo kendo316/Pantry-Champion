@@ -68,49 +68,74 @@
 
         <!-- Pantry View -->
         <div id="pantry-view" class="view active">
-            <!-- Pantry Stats Bar -->
-            <div class="stats-bar">
-                <div class="stat">
-                    <span class="stat-label">Items Tracked</span>
-                    <span class="stat-value" id="total-items">0</span>
+
+            <!-- Location Picker (landing screen) -->
+            <div id="location-picker" class="hidden">
+                <p class="location-picker-title">Where do you want to look?</p>
+                <div class="location-picker-grid">
+                    <button class="location-pick-btn" data-location="pantry">🥫 Pantry</button>
+                    <button class="location-pick-btn" data-location="fridge">🧊 Fridge</button>
+                    <button class="location-pick-btn" data-location="freezer">❄️ Freezer</button>
+                    <button class="location-pick-btn" data-location="spice-rack">🌿 Spice Rack</button>
                 </div>
-                <div class="stat">
-                    <span class="stat-label">Coverage</span>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="coverage-progress"></div>
+            </div>
+
+            <!-- Pantry Content (shown when a location is selected) -->
+            <div id="pantry-content" class="hidden">
+
+                <!-- Location Nav -->
+                <div class="location-nav">
+                    <button class="location-nav-btn" data-location="pantry">Pantry</button>
+                    <button class="location-nav-btn" data-location="fridge">Fridge</button>
+                    <button class="location-nav-btn" data-location="freezer">Freezer</button>
+                    <button class="location-nav-btn" data-location="spice-rack">Spice Rack</button>
+                </div>
+
+                <!-- Pantry Stats Bar -->
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="stat-label">Items Tracked</span>
+                        <span class="stat-value" id="total-items">0</span>
                     </div>
-                    <span class="stat-value" id="coverage-percent">0%</span>
+                    <div class="stat">
+                        <span class="stat-label">Coverage</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="coverage-progress"></div>
+                        </div>
+                        <span class="stat-value" id="coverage-percent">0%</span>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Search and Actions -->
-            <div class="action-bar">
-                <input type="search" id="pantry-search" placeholder="Search pantry..." class="search-input">
-                <button id="add-item-btn" class="btn btn-primary">+ Add Item</button>
-            </div>
+                <!-- Search and Actions -->
+                <div class="action-bar">
+                    <input type="search" id="pantry-search" placeholder="Search pantry..." class="search-input">
+                    <button id="add-item-btn" class="btn btn-primary">+ Add Item</button>
+                </div>
 
-            <!-- Export to ChatGPT Button -->
-            <button id="export-chatgpt-btn" class="btn btn-export">
-                💬 Get Dinner Ideas
-            </button>
+                <!-- Export to ChatGPT Button -->
+                <button id="export-chatgpt-btn" class="btn btn-export">
+                    💬 Get Dinner Ideas
+                </button>
 
-            <!-- Category Filter -->
-            <div class="filter-chips">
-                <button class="filter-chip active" data-category="all">All</button>
-                <button class="filter-chip" data-category="Proteins">Proteins</button>
-                <button class="filter-chip" data-category="Dairy and Eggs">Dairy</button>
-                <button class="filter-chip" data-category="Produce">Produce</button>
-                <button class="filter-chip" data-category="Grains Beans Pasta">Grains</button>
-                <button class="filter-chip" data-category="Canned Goods">Canned</button>
-                <button class="filter-chip" data-category="Condiments and Oils">Condiments</button>
-                <button class="filter-chip" data-category="Baking Supplies">Baking</button>
-                <button class="filter-chip" data-category="Supplies">Supplies</button>
-            </div>
+                <!-- Category Filter -->
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-category="all">All</button>
+                    <button class="filter-chip" data-category="Proteins">Proteins</button>
+                    <button class="filter-chip" data-category="Dairy and Eggs">Dairy</button>
+                    <button class="filter-chip" data-category="Produce">Produce</button>
+                    <button class="filter-chip" data-category="Grains Beans Pasta">Grains</button>
+                    <button class="filter-chip" data-category="Canned Goods">Canned</button>
+                    <button class="filter-chip" data-category="Condiments and Oils">Condiments</button>
+                    <button class="filter-chip" data-category="Baking Supplies">Baking</button>
+                    <button class="filter-chip" data-category="Supplies">Supplies</button>
+                </div>
 
-            <!-- Pantry Items List -->
-            <div id="pantry-list" class="items-list">
-                <!-- Items will be dynamically added here -->
-            </div>
+                <!-- Pantry Items List -->
+                <div id="pantry-list" class="items-list">
+                    <!-- Items will be dynamically added here -->
+                </div>
+
+            </div><!-- end #pantry-content -->
         </div>
 
         <!-- Restock Queue View -->
@@ -253,6 +278,32 @@
                     <div class="code-display">
                         <input type="text" id="join-pantry-code-input" placeholder="Enter pantry code" style="flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; text-transform: uppercase;">
                         <button id="join-pantry-settings-btn" class="btn btn-primary">Join</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Always start on:</h3>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="startup-location" value="choose" checked>
+                            <span>Choose location</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="startup-location" value="pantry">
+                            <span>Pantry</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="startup-location" value="fridge">
+                            <span>Fridge</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="startup-location" value="freezer">
+                            <span>Freezer</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="startup-location" value="spice-rack">
+                            <span>Spice Rack</span>
+                        </label>
                     </div>
                 </div>
 
