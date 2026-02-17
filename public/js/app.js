@@ -114,6 +114,7 @@ const modalTitle = document.getElementById('modal-title');
 const itemForm = document.getElementById('item-form');
 const itemNameInput = document.getElementById('item-name');
 const itemCategorySelect = document.getElementById('item-category');
+const itemLocationSelect = document.getElementById('item-location');
 const closeModalBtn = document.getElementById('close-modal');
 const cancelModalBtn = document.getElementById('cancel-modal');
 
@@ -155,10 +156,11 @@ const CATEGORIES = [
     'Grains Beans Pasta',
     'Canned Goods',
     'Condiments and Oils',
-    'Spices',
     'Baking Supplies',
     'Supplies'
 ];
+
+const LOCATIONS = ['pantry', 'freezer', 'fridge', 'spice-rack'];
 
 // Initialize App
 function initApp() {
@@ -795,6 +797,7 @@ function openItemModal(itemId = null) {
             modalTitle.textContent = 'Edit Item';
             itemNameInput.value = item.name;
             itemCategorySelect.value = item.category;
+            itemLocationSelect.value = item.location || 'pantry';
             document.querySelector(`input[name="status"][value="${item.status}"]`).checked = true;
         }
     } else {
@@ -816,6 +819,7 @@ async function handleSaveItem(e) {
 
     const name = itemNameInput.value.trim();
     const category = itemCategorySelect.value;
+    const location = itemLocationSelect.value || 'pantry';
     const status = document.querySelector('input[name="status"]:checked').value;
 
     if (!name || !category) {
@@ -832,6 +836,7 @@ async function handleSaveItem(e) {
             await updateDoc(doc(db, 'pantries', currentPantryId, 'items', editingItemId), {
                 name,
                 category,
+                location,
                 status,
                 updatedAt: serverTimestamp()
             });
@@ -857,6 +862,7 @@ async function handleSaveItem(e) {
             await setDoc(itemRef, {
                 name,
                 category,
+                location,
                 status,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
@@ -919,6 +925,7 @@ async function handleBulkAdd() {
                 await setDoc(itemRef, {
                     name,
                     category,
+                    location: 'pantry',
                     status: 'in-stock',
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
