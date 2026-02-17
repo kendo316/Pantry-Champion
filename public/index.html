@@ -356,6 +356,39 @@
         </div>
     </div>
 
+    <!-- Voice Confirmation Modal -->
+    <div id="voice-confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Voice Item</h2>
+                <button class="close-btn" id="close-voice-confirm-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="voice-confirm-details">
+                    <div class="voice-confirm-row">
+                        <span class="voice-confirm-label">Item</span>
+                        <span class="voice-confirm-value" id="voice-confirm-name"></span>
+                    </div>
+                    <div class="voice-confirm-row">
+                        <span class="voice-confirm-label">Category</span>
+                        <span class="voice-confirm-value" id="voice-confirm-category"></span>
+                    </div>
+                </div>
+                <label for="voice-confirm-location" style="font-weight: 600; display: block; margin-top: 16px; margin-bottom: 8px;">Location</label>
+                <select id="voice-confirm-location" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; font-family: inherit;">
+                    <option value="pantry">Pantry</option>
+                    <option value="freezer">Freezer</option>
+                    <option value="fridge">Fridge</option>
+                    <option value="spice-rack">Spice Rack</option>
+                </select>
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" id="cancel-voice-confirm">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-voice-add">Add to Restock</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
 

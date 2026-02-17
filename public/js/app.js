@@ -72,6 +72,7 @@ let searchQuery = '';
 let editingItemId = null;
 let isRecognitionActive = false;
 let currentRecognition = null;
+let pendingVoiceItem = null;
 
 // DOM Elements - Screens
 const loadingScreen = document.getElementById('loading-screen');
@@ -157,6 +158,14 @@ const cancelPasswordResetBtn = document.getElementById('cancel-password-reset');
 const sendPasswordResetBtn = document.getElementById('send-password-reset');
 const resetEmailInput = document.getElementById('reset-email');
 const forgotPasswordLink = document.getElementById('forgot-password-link');
+
+const voiceConfirmModal = document.getElementById('voice-confirm-modal');
+const voiceConfirmNameEl = document.getElementById('voice-confirm-name');
+const voiceConfirmCategoryEl = document.getElementById('voice-confirm-category');
+const voiceConfirmLocationSelect = document.getElementById('voice-confirm-location');
+const closeVoiceConfirmModalBtn = document.getElementById('close-voice-confirm-modal');
+const cancelVoiceConfirmBtn = document.getElementById('cancel-voice-confirm');
+const confirmVoiceAddBtn = document.getElementById('confirm-voice-add');
 
 const toastContainer = document.getElementById('toast-container');
 
@@ -272,6 +281,14 @@ function setupEventListeners() {
         if (e.key === 'Enter') {
             handlePasswordReset();
         }
+    });
+
+    // Voice Confirmation Modal
+    closeVoiceConfirmModalBtn.addEventListener('click', closeVoiceConfirmModal);
+    cancelVoiceConfirmBtn.addEventListener('click', closeVoiceConfirmModal);
+    confirmVoiceAddBtn.addEventListener('click', handleVoiceConfirm);
+    voiceConfirmModal.addEventListener('click', (e) => {
+        if (e.target === voiceConfirmModal) closeVoiceConfirmModal();
     });
 
     // Navigation
@@ -1413,59 +1430,8 @@ async function processVoiceInput(text, categoryOverride = null) {
     // Use provided category or guess based on common items
     const category = categoryOverride || guessCategory(itemName);
 
-    // Normalize for comparison
-    const normalizedName = itemName.trim().toLowerCase();
-
-    // Check for duplicate in restock queue (case-insensitive, trimmed)
-    const existingRestockItem = restockItems.find(item =>
-        item.name.trim().toLowerCase() === normalizedName && !item.completed
-    );
-
-    if (existingRestockItem) {
-        showToast(`"${itemName}" is already on your restock list`, 'info');
-        switchView('restock');
-        return;
-    }
-
-    try {
-        // Add to restock queue
-        const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
-        await setDoc(restockRef, {
-            name: itemName.trim(),
-            category: category,
-            priority: 'normal',
-            completed: false,
-            createdAt: serverTimestamp(),
-            addedVia: 'voice'
-        });
-
-        // Check if item exists in pantry
-        const existingItem = pantryItems.find(item =>
-            item.name.trim().toLowerCase() === normalizedName
-        );
-
-        if (!existingItem) {
-            // Prompt user to add to pantry
-            if (confirm(`"${itemName}" is not in your pantry inventory. Add it now?`)) {
-                const itemRef = doc(collection(db, 'pantries', currentPantryId, 'items'));
-                await setDoc(itemRef, {
-                    name: itemName.trim(),
-                    category: category,
-                    status: 'needs-restock',
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                });
-            }
-        }
-
-        showToast(`Added "${itemName}" to restock queue`, 'success');
-
-        // Switch to restock view
-        switchView('restock');
-    } catch (error) {
-        console.error('Error processing voice input:', error);
-        showToast('Error adding item', 'error');
-    }
+    // Show confirmation modal so user can verify name, category, and location
+    openVoiceConfirmModal(itemName, category);
 }
 
 function guessCategory(itemName) {
@@ -1518,6 +1484,95 @@ function guessCategory(itemName) {
 
     // Default
     return 'Condiments and Oils';
+}
+
+function guessLocation(category) {
+    // If user is already viewing a specific location, default to that
+    if (currentLocation) return currentLocation;
+
+    // Otherwise, infer from category
+    switch (category) {
+        case 'Proteins':
+            return 'freezer';
+        case 'Dairy and Eggs':
+            return 'fridge';
+        case 'Produce':
+            return 'fridge';
+        case 'Spices':
+            return 'spice-rack';
+        default:
+            return 'pantry';
+    }
+}
+
+function openVoiceConfirmModal(itemName, category) {
+    pendingVoiceItem = { name: itemName, category };
+    voiceConfirmNameEl.textContent = itemName;
+    voiceConfirmCategoryEl.textContent = category;
+    voiceConfirmLocationSelect.value = guessLocation(category);
+    voiceConfirmModal.classList.remove('hidden');
+}
+
+function closeVoiceConfirmModal() {
+    voiceConfirmModal.classList.add('hidden');
+    pendingVoiceItem = null;
+}
+
+async function handleVoiceConfirm() {
+    if (!pendingVoiceItem) return;
+
+    const { name: itemName, category } = pendingVoiceItem;
+    const location = voiceConfirmLocationSelect.value;
+    closeVoiceConfirmModal();
+
+    const normalizedName = itemName.trim().toLowerCase();
+
+    // Check for duplicate in restock queue
+    const existingRestockItem = restockItems.find(item =>
+        item.name.trim().toLowerCase() === normalizedName && !item.completed
+    );
+
+    if (existingRestockItem) {
+        showToast(`"${itemName}" is already on your restock list`, 'info');
+        switchView('restock');
+        return;
+    }
+
+    try {
+        // Add to restock queue
+        const restockRef = doc(collection(db, 'pantries', currentPantryId, 'restock'));
+        await setDoc(restockRef, {
+            name: itemName.trim(),
+            category: category,
+            priority: 'normal',
+            completed: false,
+            createdAt: serverTimestamp(),
+            addedVia: 'voice'
+        });
+
+        // If item doesn't exist in pantry, add it with the confirmed location
+        const existingItem = pantryItems.find(item =>
+            item.name.trim().toLowerCase() === normalizedName
+        );
+
+        if (!existingItem) {
+            const itemRef = doc(collection(db, 'pantries', currentPantryId, 'items'));
+            await setDoc(itemRef, {
+                name: itemName.trim(),
+                category: category,
+                location: location,
+                status: 'needs-restock',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+        }
+
+        showToast(`Added "${itemName}" to restock queue`, 'success');
+        switchView('restock');
+    } catch (error) {
+        console.error('Error processing voice input:', error);
+        showToast('Error adding item', 'error');
+    }
 }
 
 // Export to ChatGPT
