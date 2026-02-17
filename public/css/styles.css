@@ -490,6 +490,28 @@ body {
     color: var(--text-secondary);
 }
 
+.item-dates {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.item-date {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.item-date.expiring-soon {
+    color: #d97706;
+    font-weight: 600;
+}
+
+.item-date.expired {
+    color: #dc2626;
+    font-weight: 600;
+}
+
 .item-actions {
     display: flex;
     gap: 8px;
@@ -781,6 +803,43 @@ body {
 
 .modal-actions .btn {
     flex: 1;
+}
+
+/* Location-specific date fields in item modal */
+.location-date-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    background: var(--background);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.location-date-fields label {
+    font-weight: 600;
+    margin-bottom: -8px;
+}
+
+.location-date-fields input[type="date"] {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: var(--surface);
+}
+
+.location-date-fields input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.date-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 0;
 }
 
 /* Settings */

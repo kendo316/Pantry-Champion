@@ -188,6 +188,24 @@
                         <option value="spice-rack">Spice Rack</option>
                     </select>
 
+                    <!-- Spice Rack Date Fields -->
+                    <div id="spice-date-fields" class="location-date-fields hidden">
+                        <label for="item-purchased-date">Date Purchased</label>
+                        <input type="date" id="item-purchased-date">
+                        <label for="item-replace-by-date">Recommended Replace By</label>
+                        <input type="date" id="item-replace-by-date">
+                        <p class="date-hint">Auto-suggested: 12 months from purchase date. Editable.</p>
+                    </div>
+
+                    <!-- Freezer Date Fields -->
+                    <div id="freezer-date-fields" class="location-date-fields hidden">
+                        <label for="item-freezer-date">Date Frozen</label>
+                        <input type="date" id="item-freezer-date">
+                        <label for="item-use-by-date">Recommended Use By</label>
+                        <input type="date" id="item-use-by-date">
+                        <p class="date-hint">Auto-suggested based on category storage guidelines. Editable.</p>
+                    </div>
+
                     <label>Status</label>
                     <div class="radio-group">
                         <label class="radio-label">

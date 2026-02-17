@@ -123,6 +123,12 @@ const itemCategorySelect = document.getElementById('item-category');
 const itemLocationSelect = document.getElementById('item-location');
 const closeModalBtn = document.getElementById('close-modal');
 const cancelModalBtn = document.getElementById('cancel-modal');
+const spiceDateFields = document.getElementById('spice-date-fields');
+const freezerDateFields = document.getElementById('freezer-date-fields');
+const itemPurchasedDateInput = document.getElementById('item-purchased-date');
+const itemReplaceByDateInput = document.getElementById('item-replace-by-date');
+const itemFreezerDateInput = document.getElementById('item-freezer-date');
+const itemUseByDateInput = document.getElementById('item-use-by-date');
 
 const bulkModal = document.getElementById('bulk-modal');
 const bulkItemsTextarea = document.getElementById('bulk-items');
@@ -322,6 +328,32 @@ function setupEventListeners() {
     closeModalBtn.addEventListener('click', closeItemModal);
     cancelModalBtn.addEventListener('click', closeItemModal);
     itemForm.addEventListener('submit', handleSaveItem);
+
+    // Location change: show/hide date fields
+    itemLocationSelect.addEventListener('change', updateDateFieldVisibility);
+
+    // Spice Rack: auto-suggest replace-by date (12 months from purchase)
+    itemPurchasedDateInput.addEventListener('change', () => {
+        if (itemPurchasedDateInput.value && !itemReplaceByDateInput.value) {
+            itemReplaceByDateInput.value = addMonthsToDate(itemPurchasedDateInput.value, 12);
+        }
+    });
+
+    // Freezer: auto-suggest use-by date based on category
+    itemFreezerDateInput.addEventListener('change', () => {
+        if (itemFreezerDateInput.value && !itemUseByDateInput.value) {
+            const months = getFreezerMonths(itemCategorySelect.value);
+            itemUseByDateInput.value = addMonthsToDate(itemFreezerDateInput.value, months);
+        }
+    });
+
+    // Freezer: recalculate use-by if category changes while freezer date is set
+    itemCategorySelect.addEventListener('change', () => {
+        if (itemFreezerDateInput.value && freezerDateFields && !freezerDateFields.classList.contains('hidden')) {
+            const months = getFreezerMonths(itemCategorySelect.value);
+            itemUseByDateInput.value = addMonthsToDate(itemFreezerDateInput.value, months);
+        }
+    });
 
     // Bulk modal
     closeBulkModalBtn.addEventListener('click', closeBulkModal);
@@ -698,7 +730,24 @@ function renderPantryItems() {
         return;
     }
 
-    pantryList.innerHTML = filteredItems.map(item => `
+    pantryList.innerHTML = filteredItems.map(item => {
+        // Build location-specific date display
+        let datesHtml = '';
+        if (item.location === 'spice-rack' && (item.purchasedDate || item.recommendedReplaceByDate)) {
+            const replaceClass = dateStatusClass(item.recommendedReplaceByDate);
+            datesHtml = `<div class="item-dates">
+                ${item.purchasedDate ? `<span class="item-date">Purchased: ${formatDate(item.purchasedDate)}</span>` : ''}
+                ${item.recommendedReplaceByDate ? `<span class="item-date ${replaceClass}">Replace by: ${formatDate(item.recommendedReplaceByDate)}${replaceClass === 'expired' ? ' — past due' : replaceClass === 'expiring-soon' ? ' — soon' : ''}</span>` : ''}
+            </div>`;
+        } else if (item.location === 'freezer' && (item.freezerDate || item.recommendedUseByDate)) {
+            const useByClass = dateStatusClass(item.recommendedUseByDate);
+            datesHtml = `<div class="item-dates">
+                ${item.freezerDate ? `<span class="item-date">Frozen: ${formatDate(item.freezerDate)}</span>` : ''}
+                ${item.recommendedUseByDate ? `<span class="item-date ${useByClass}">Use by: ${formatDate(item.recommendedUseByDate)}${useByClass === 'expired' ? ' — past due' : useByClass === 'expiring-soon' ? ' — soon' : ''}</span>` : ''}
+            </div>`;
+        }
+
+        return `
         <div class="item-card" data-id="${item.id}">
             <div class="item-status-icon">
                 ${item.status === 'in-stock' ? '✅' : '⚠️'}
@@ -706,6 +755,7 @@ function renderPantryItems() {
             <div class="item-info">
                 <div class="item-name">${item.name}</div>
                 <div class="item-category">${item.category}</div>
+                ${datesHtml}
             </div>
             <div class="item-actions">
                 <button class="item-action-btn ${item.status === 'in-stock' ? 'restock' : 'in-stock'}"
@@ -716,7 +766,8 @@ function renderPantryItems() {
                 <button class="item-action-btn delete" onclick="deleteItem('${item.id}')">Delete</button>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderRestockItems() {
@@ -853,6 +904,75 @@ async function handleUpdatePantryName() {
     }
 }
 
+// Date Field Helpers
+
+// Returns a YYYY-MM-DD string that is `months` months after `dateStr` (YYYY-MM-DD).
+// Uses the midpoint if a range is given.
+function addMonthsToDate(dateStr, months) {
+    const date = new Date(dateStr + 'T00:00:00');
+    date.setMonth(date.getMonth() + months);
+    return date.toISOString().split('T')[0];
+}
+
+// Returns the suggested number of months for a freezer item based on category.
+// Uses the midpoint of common guidelines.
+function getFreezerMonths(category) {
+    switch (category) {
+        case 'Proteins':       return 5;   // 4-6 months
+        case 'Produce':        return 10;  // 8-12 months
+        case 'Dairy and Eggs': return 2;   // 2-3 months
+        case 'Grains Beans Pasta': return 4; // 3-6 months
+        default:               return 3;   // general / Prepared Meals
+    }
+}
+
+// Returns a human-readable label for the freezer guideline used.
+function getFreezerGuidelineLabel(category) {
+    switch (category) {
+        case 'Proteins':       return 'Proteins: 4-6 months';
+        case 'Produce':        return 'Produce: 8-12 months';
+        case 'Dairy and Eggs': return 'Dairy & Eggs: 2-3 months';
+        case 'Grains Beans Pasta': return 'Grains/Pasta: 3-6 months';
+        default:               return 'General: ~3 months';
+    }
+}
+
+// Formats a YYYY-MM-DD string as "Jan 15, 2025".
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Returns 'expired', 'expiring-soon' (within 60 days), or '' based on a YYYY-MM-DD date.
+function dateStatusClass(dateStr) {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const target = new Date(year, month - 1, day);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((target - now) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'expired';
+    if (diffDays <= 60) return 'expiring-soon';
+    return '';
+}
+
+// Shows or hides the location-specific date field groups based on current location select value.
+function updateDateFieldVisibility() {
+    const loc = itemLocationSelect.value;
+    if (loc === 'spice-rack') {
+        spiceDateFields.classList.remove('hidden');
+        freezerDateFields.classList.add('hidden');
+    } else if (loc === 'freezer') {
+        freezerDateFields.classList.remove('hidden');
+        spiceDateFields.classList.add('hidden');
+    } else {
+        spiceDateFields.classList.add('hidden');
+        freezerDateFields.classList.add('hidden');
+    }
+}
+
 // Item Modal Functions
 function openItemModal(itemId = null) {
     editingItemId = itemId;
@@ -865,18 +985,42 @@ function openItemModal(itemId = null) {
             itemCategorySelect.value = item.category;
             itemLocationSelect.value = item.location || 'pantry';
             document.querySelector(`input[name="status"][value="${item.status}"]`).checked = true;
+
+            // Pre-fill spice rack dates
+            itemPurchasedDateInput.value = item.purchasedDate || '';
+            itemReplaceByDateInput.value = item.recommendedReplaceByDate || '';
+
+            // Pre-fill freezer dates
+            itemFreezerDateInput.value = item.freezerDate || '';
+            itemUseByDateInput.value = item.recommendedUseByDate || '';
         }
     } else {
         modalTitle.textContent = 'Add Item';
         itemForm.reset();
+        itemPurchasedDateInput.value = '';
+        itemReplaceByDateInput.value = '';
+        itemFreezerDateInput.value = '';
+        itemUseByDateInput.value = '';
+
+        // Pre-select location to match current view
+        if (currentLocation) {
+            itemLocationSelect.value = currentLocation;
+        }
     }
 
+    updateDateFieldVisibility();
     itemModal.classList.remove('hidden');
 }
 
 function closeItemModal() {
     itemModal.classList.add('hidden');
     itemForm.reset();
+    itemPurchasedDateInput.value = '';
+    itemReplaceByDateInput.value = '';
+    itemFreezerDateInput.value = '';
+    itemUseByDateInput.value = '';
+    spiceDateFields.classList.add('hidden');
+    freezerDateFields.classList.add('hidden');
     editingItemId = null;
 }
 
@@ -893,6 +1037,38 @@ async function handleSaveItem(e) {
         return;
     }
 
+    // Collect location-specific date fields
+    const spiceDates = {};
+    const freezerDates = {};
+
+    if (location === 'spice-rack') {
+        if (itemPurchasedDateInput.value) spiceDates.purchasedDate = itemPurchasedDateInput.value;
+        if (itemReplaceByDateInput.value) spiceDates.recommendedReplaceByDate = itemReplaceByDateInput.value;
+        // Clear freezer dates when saving as spice-rack
+        freezerDates.freezerDate = null;
+        freezerDates.recommendedUseByDate = null;
+    } else if (location === 'freezer') {
+        if (itemFreezerDateInput.value) freezerDates.freezerDate = itemFreezerDateInput.value;
+        if (itemUseByDateInput.value) freezerDates.recommendedUseByDate = itemUseByDateInput.value;
+        // Clear spice dates when saving as freezer
+        spiceDates.purchasedDate = null;
+        spiceDates.recommendedReplaceByDate = null;
+    } else {
+        // Other locations: clear both sets of date fields
+        spiceDates.purchasedDate = null;
+        spiceDates.recommendedReplaceByDate = null;
+        freezerDates.freezerDate = null;
+        freezerDates.recommendedUseByDate = null;
+    }
+
+    // Merge non-null date fields; omit null ones to avoid cluttering Firestore
+    const dateFields = {};
+    for (const [k, v] of Object.entries({ ...spiceDates, ...freezerDates })) {
+        if (v !== null) dateFields[k] = v;
+        // Explicitly delete fields that should be removed
+        else dateFields[k] = null;
+    }
+
     try {
         if (editingItemId) {
             // Get the original item to check if category changed
@@ -904,6 +1080,7 @@ async function handleSaveItem(e) {
                 category,
                 location,
                 status,
+                ...dateFields,
                 updatedAt: serverTimestamp()
             });
 
@@ -930,6 +1107,7 @@ async function handleSaveItem(e) {
                 category,
                 location,
                 status,
+                ...dateFields,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
