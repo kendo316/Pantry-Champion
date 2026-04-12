@@ -973,7 +973,134 @@ body {
     margin-bottom: 8px;
 }
 
-/* Responsive Design */
+/* ─── Shopping List View ──────────────────────────────────── */
+
+.shopping-intro {
+    padding: 14px 0 20px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.shopping-intro-text {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.shopping-sections-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.shopping-section {
+    /* individual section container */
+}
+
+.shopping-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shopping-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 11px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.shopping-location-group {
+    margin-bottom: 16px;
+}
+
+.shopping-location-group:last-child {
+    margin-bottom: 0;
+}
+
+.shopping-location-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    padding-left: 2px;
+}
+
+.shopping-item-list {
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.shopping-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+    min-height: 48px; /* comfortable touch target */
+}
+
+.shopping-item:last-child {
+    border-bottom: none;
+}
+
+.shopping-item-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.shopping-item-category {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.shopping-item-date {
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.shopping-item-date.date-past-due {
+    color: #dc2626;
+}
+
+.shopping-item-date.date-urgent {
+    color: #d97706;
+}
+
+.shopping-item-date.date-soon {
+    color: #92400e;
+}
+
+.shopping-item-date.date-upcoming {
+    color: var(--text-secondary);
+}
+
+/* ─── Responsive Design ───────────────────────────────────── */
+
+/* Phone (≤600px) */
 @media (max-width: 600px) {
     .login-container {
         padding: 30px 24px;
@@ -1000,6 +1127,73 @@ body {
         width: 100%;
         justify-content: flex-end;
     }
+
+    /* Shopping list: tighter padding on small screens */
+    .shopping-item {
+        padding: 11px 14px;
+    }
+}
+
+/* Tablet / iPad (≥768px) */
+@media (min-width: 768px) {
+    /* Slightly wider app container on iPad */
+    #app {
+        max-width: 960px;
+    }
+
+    /* Shopping List: two columns side by side */
+    .shopping-sections-wrap {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 28px;
+        align-items: start;
+    }
+
+    /* Location picker: all 4 buttons in a single row */
+    .location-picker-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* Slightly larger nav tabs for better tap targets */
+    .nav-tab {
+        padding: 18px 16px;
+        font-size: 1rem;
+    }
+
+    /* Stats bar always horizontal on tablet */
+    .stats-bar {
+        flex-direction: row;
+    }
+
+    /* Action bar stays horizontal on tablet */
+    .action-bar {
+        flex-direction: row;
+    }
+
+    /* Item cards don't need to wrap on tablet */
+    .item-card {
+        flex-wrap: nowrap;
+    }
+
+    .item-actions {
+        width: auto;
+    }
+
+    /* Larger touch targets for item action buttons */
+    .item-action-btn {
+        padding: 10px 16px;
+    }
+}
+
+/* Large iPad landscape / desktop (≥1024px) */
+@media (min-width: 1024px) {
+    #app {
+        max-width: 1100px;
+    }
+
+    body {
+        background: linear-gradient(135deg, var(--background) 0%, #eef5f5 100%);
+    }
 }
 
 /* iOS-specific fixes */
@@ -1007,6 +1201,6 @@ body {
     input,
     textarea,
     select {
-        font-size: 16px; /* Prevents zoom on focus */
+        font-size: 16px; /* Prevents auto-zoom on focus */
     }
 }

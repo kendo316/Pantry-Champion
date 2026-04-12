@@ -89,6 +89,8 @@ const joinPantryBtn = document.getElementById('join-pantry-btn');
 
 // DOM Elements - Navigation
 const navTabs = document.querySelectorAll('.nav-tab');
+const shoppingView = document.getElementById('shopping-view');
+const shoppingContent = document.getElementById('shopping-content');
 const pantryView = document.getElementById('pantry-view');
 const restockView = document.getElementById('restock-view');
 
@@ -253,7 +255,8 @@ function showApp() {
     loadingScreen.classList.add('hidden');
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
-    applyStartupLocation();
+    applyStartupLocation(); // Set up pantry location state (picker or specific location)
+    switchView('shopping'); // Default landing view for weekly list-making
 }
 
 function showLoading() {
@@ -268,6 +271,9 @@ function setupEventListeners() {
     loginBtn.addEventListener('click', handleLogin);
     signupBtn.addEventListener('click', handleSignup);
     joinPantryBtn.addEventListener('click', handleJoinPantry);
+    // Allow pressing Enter to log in from either field
+    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
     forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
         openPasswordResetModal();
@@ -396,12 +402,31 @@ async function handleLogin() {
         return;
     }
 
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Signing in…';
+
     try {
         await signInWithEmailAndPassword(auth, email, password);
         showToast('Logged in successfully', 'success');
     } catch (error) {
-        console.error('Login error:', error);
-        showToast(error.message, 'error');
+        console.error('Login error:', error.code, error.message);
+        // Firebase v10 uses auth/invalid-credential for wrong email or password
+        if (error.code === 'auth/invalid-credential' ||
+            error.code === 'auth/wrong-password' ||
+            error.code === 'auth/user-not-found') {
+            showToast('Incorrect email or password — please try again.', 'error');
+        } else if (error.code === 'auth/invalid-email') {
+            showToast('Please enter a valid email address.', 'error');
+        } else if (error.code === 'auth/too-many-requests') {
+            showToast('Too many failed attempts. Try again later or reset your password.', 'error');
+        } else if (error.code === 'auth/network-request-failed') {
+            showToast('Network error — check your connection and try again.', 'error');
+        } else {
+            showToast('Sign-in failed. Please check your credentials and try again.', 'error');
+        }
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
     }
 }
 
@@ -444,8 +469,16 @@ async function handleSignup() {
             showToast('Account created successfully', 'success');
         }
     } catch (error) {
-        console.error('Signup error:', error);
-        showToast(error.message, 'error');
+        console.error('Signup error:', error.code, error.message);
+        if (error.code === 'auth/email-already-in-use') {
+            showToast('An account with this email already exists. Try signing in.', 'error');
+        } else if (error.code === 'auth/invalid-email') {
+            showToast('Please enter a valid email address.', 'error');
+        } else if (error.code === 'auth/network-request-failed') {
+            showToast('Network error — check your connection and try again.', 'error');
+        } else {
+            showToast('Could not create account. Please try again.', 'error');
+        }
     }
 }
 
@@ -642,6 +675,7 @@ function setupRealtimeListeners() {
         });
         renderPantryItems();
         updateStats();
+        renderShoppingList();
     });
 
     // Listen to restock items
@@ -652,24 +686,26 @@ function setupRealtimeListeners() {
             restockItems.push({ id: doc.id, ...doc.data() });
         });
         renderRestockItems();
+        renderShoppingList();
     });
 }
 
 // UI Functions
 function switchView(viewName) {
     navTabs.forEach(tab => {
-        if (tab.dataset.view === viewName) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
+        tab.classList.toggle('active', tab.dataset.view === viewName);
     });
 
-    if (viewName === 'pantry') {
+    shoppingView.classList.remove('active');
+    pantryView.classList.remove('active');
+    restockView.classList.remove('active');
+
+    if (viewName === 'shopping') {
+        shoppingView.classList.add('active');
+        renderShoppingList();
+    } else if (viewName === 'pantry') {
         pantryView.classList.add('active');
-        restockView.classList.remove('active');
     } else if (viewName === 'restock') {
-        pantryView.classList.remove('active');
         restockView.classList.add('active');
     }
 }
@@ -1625,6 +1661,168 @@ async function handleVoiceConfirm() {
         console.error('Error processing voice input:', error);
         showToast('Error adding item', 'error');
     }
+}
+
+// Shopping List View
+function renderShoppingList() {
+    if (!shoppingContent) return;
+
+    const LOCATION_ORDER = ['pantry', 'fridge', 'freezer', 'spice-rack'];
+    const LOCATION_LABELS = {
+        'pantry': '🥫 Pantry',
+        'fridge': '🧊 Fridge',
+        'freezer': '❄️ Freezer',
+        'spice-rack': '🌿 Spice Rack'
+    };
+
+    // Section 1: Pending restock items (not yet checked off)
+    const pendingRestock = restockItems.filter(i => !i.completed);
+
+    // Section 2: Pantry items with a date expiring within 30 days (or already past)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const thirtyDaysOut = new Date(today);
+    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+
+    const expiringItems = pantryItems.filter(item => {
+        const dateStr = item.location === 'spice-rack'
+            ? item.recommendedReplaceByDate
+            : item.location === 'freezer'
+            ? item.recommendedUseByDate
+            : null;
+        if (!dateStr) return false;
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const target = new Date(y, m - 1, d);
+        return target <= thirtyDaysOut; // includes expired and upcoming ≤30 days
+    });
+
+    if (pendingRestock.length === 0 && expiringItems.length === 0) {
+        shoppingContent.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">✅</div>
+                <h3>All stocked up!</h3>
+                <p>No items need restocking or are expiring within 30 days</p>
+            </div>
+        `;
+        return;
+    }
+
+    let restockSectionHtml = '';
+    let expiringSectionHtml = '';
+
+    // Build Needs Restock section
+    if (pendingRestock.length > 0) {
+        const byLocation = {};
+        LOCATION_ORDER.forEach(loc => { byLocation[loc] = []; });
+
+        pendingRestock.forEach(item => {
+            // Look up location from the pantry item if available
+            const pantryMatch = pantryItems.find(p =>
+                p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+            );
+            const loc = pantryMatch ? (pantryMatch.location || 'pantry') : 'pantry';
+            if (!byLocation[loc]) byLocation[loc] = [];
+            byLocation[loc].push(item);
+        });
+
+        let groupsHtml = '';
+        LOCATION_ORDER.forEach(loc => {
+            if (byLocation[loc].length === 0) return;
+            const rows = byLocation[loc].map(item => `
+                <li class="shopping-item">
+                    <span class="shopping-item-name">${escapeHtml(item.name)}</span>
+                    <span class="shopping-item-category">${escapeHtml(item.category || '')}</span>
+                </li>
+            `).join('');
+            groupsHtml += `
+                <div class="shopping-location-group">
+                    <h3 class="shopping-location-label">${LOCATION_LABELS[loc]}</h3>
+                    <ul class="shopping-item-list">${rows}</ul>
+                </div>
+            `;
+        });
+
+        restockSectionHtml = `
+            <div class="shopping-section">
+                <h2 class="shopping-section-title">🛒 Needs Restock <span class="shopping-count">${pendingRestock.length}</span></h2>
+                ${groupsHtml}
+            </div>
+        `;
+    }
+
+    // Build Expiring Soon section
+    if (expiringItems.length > 0) {
+        const byLocation = {};
+        LOCATION_ORDER.forEach(loc => { byLocation[loc] = []; });
+
+        expiringItems.forEach(item => {
+            const loc = item.location || 'pantry';
+            if (!byLocation[loc]) byLocation[loc] = [];
+            byLocation[loc].push(item);
+        });
+
+        let groupsHtml = '';
+        LOCATION_ORDER.forEach(loc => {
+            if (byLocation[loc].length === 0) return;
+            const rows = byLocation[loc].map(item => {
+                const dateStr = item.location === 'spice-rack'
+                    ? item.recommendedReplaceByDate
+                    : item.recommendedUseByDate;
+                const { label, cls } = shoppingDateLabel(dateStr);
+                return `
+                    <li class="shopping-item">
+                        <span class="shopping-item-name">${escapeHtml(item.name)}</span>
+                        <span class="shopping-item-date ${cls}">${label}</span>
+                    </li>
+                `;
+            }).join('');
+            groupsHtml += `
+                <div class="shopping-location-group">
+                    <h3 class="shopping-location-label">${LOCATION_LABELS[loc]}</h3>
+                    <ul class="shopping-item-list">${rows}</ul>
+                </div>
+            `;
+        });
+
+        expiringSectionHtml = `
+            <div class="shopping-section">
+                <h2 class="shopping-section-title">⏰ Expiring Soon <span class="shopping-count">${expiringItems.length}</span></h2>
+                ${groupsHtml}
+            </div>
+        `;
+    }
+
+    shoppingContent.innerHTML = `
+        <div class="shopping-sections-wrap">
+            ${restockSectionHtml}
+            ${expiringSectionHtml}
+        </div>
+    `;
+}
+
+// Returns a label and CSS class for a date in the shopping list context
+function shoppingDateLabel(dateStr) {
+    if (!dateStr) return { label: '', cls: '' };
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const target = new Date(y, m - 1, d);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((target - now) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return { label: 'past due', cls: 'date-past-due' };
+    if (diffDays === 0) return { label: 'use today', cls: 'date-urgent' };
+    if (diffDays === 1) return { label: 'tomorrow', cls: 'date-urgent' };
+    if (diffDays <= 7) return { label: `${diffDays} days left`, cls: 'date-soon' };
+    return { label: `${diffDays} days left`, cls: 'date-upcoming' };
+}
+
+// XSS-safe HTML escaping for dynamic content
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 // Export to ChatGPT

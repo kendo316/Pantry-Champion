@@ -58,16 +58,29 @@
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" data-view="pantry">
+            <button class="nav-tab" data-view="shopping">
+                📋 Shopping List
+            </button>
+            <button class="nav-tab" data-view="pantry">
                 📦 Pantry
             </button>
             <button class="nav-tab" data-view="restock">
-                🛒 Restock Queue
+                🛒 Restock
             </button>
         </nav>
 
+        <!-- Shopping List View -->
+        <div id="shopping-view" class="view">
+            <div class="shopping-intro">
+                <p class="shopping-intro-text">Your weekly reference — what needs to be picked up</p>
+            </div>
+            <div id="shopping-content">
+                <!-- Rendered by renderShoppingList() -->
+            </div>
+        </div>
+
         <!-- Pantry View -->
-        <div id="pantry-view" class="view active">
+        <div id="pantry-view" class="view">
 
             <!-- Location Picker (landing screen) -->
             <div id="location-picker" class="hidden">
