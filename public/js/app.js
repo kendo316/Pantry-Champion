@@ -281,11 +281,19 @@ function setupEventListeners() {
 
     // Password visibility toggle
     passwordToggleBtn.addEventListener('click', () => {
-        const isPassword = passwordInput.type === 'password';
-        passwordInput.type = isPassword ? 'text' : 'password';
-        eyeIcon.classList.toggle('hidden', isPassword);
-        eyeOffIcon.classList.toggle('hidden', !isPassword);
-        passwordToggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        const reveal = passwordInput.type === 'password';
+        passwordInput.type = reveal ? 'text' : 'password';
+        // Explicit add/remove (safer than classList.toggle second-arg in older Safari)
+        if (reveal) {
+            eyeIcon.classList.add('hidden');
+            eyeOffIcon.classList.remove('hidden');
+        } else {
+            eyeIcon.classList.remove('hidden');
+            eyeOffIcon.classList.add('hidden');
+        }
+        passwordToggleBtn.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+        // Return focus so the user can keep typing without re-tapping the field
+        passwordInput.focus();
     });
     forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
