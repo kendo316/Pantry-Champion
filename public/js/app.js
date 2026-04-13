@@ -82,6 +82,9 @@ const appScreen = document.getElementById('app');
 // DOM Elements - Login
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
+const passwordToggleBtn = document.getElementById('password-toggle');
+const eyeIcon = document.getElementById('eye-icon');
+const eyeOffIcon = document.getElementById('eye-off-icon');
 const loginBtn = document.getElementById('login-btn');
 const signupBtn = document.getElementById('signup-btn');
 const pantryCodeInput = document.getElementById('pantry-code');
@@ -107,6 +110,7 @@ const totalItemsEl = document.getElementById('total-items');
 const coverageProgressEl = document.getElementById('coverage-progress');
 const coveragePercentEl = document.getElementById('coverage-percent');
 const pantrySearchInput = document.getElementById('pantry-search');
+const searchDropdown = document.getElementById('search-dropdown');
 const addItemBtn = document.getElementById('add-item-btn');
 const exportChatGPTBtn = document.getElementById('export-chatgpt-btn');
 const filterChips = document.querySelectorAll('.filter-chip');
@@ -274,6 +278,15 @@ function setupEventListeners() {
     // Allow pressing Enter to log in from either field
     emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passwordInput.focus(); });
     passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+    // Password visibility toggle
+    passwordToggleBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        eyeIcon.classList.toggle('hidden', isPassword);
+        eyeOffIcon.classList.toggle('hidden', !isPassword);
+        passwordToggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    });
     forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
         openPasswordResetModal();
@@ -312,6 +325,32 @@ function setupEventListeners() {
     pantrySearchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value.toLowerCase();
         renderPantryItems();
+        updateSearchDropdown();
+    });
+    pantrySearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSearchDropdown();
+    });
+
+    // Close autocomplete dropdown when clicking outside the search wrapper
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-autocomplete-wrap')) closeSearchDropdown();
+    });
+
+    // Dropdown item selection
+    searchDropdown.addEventListener('click', (e) => {
+        const suggestion = e.target.closest('.search-suggestion');
+        if (!suggestion) return;
+        const itemId = suggestion.dataset.itemId;
+        const loc = suggestion.dataset.location;
+        const item = pantryItems.find(i => i.id === itemId);
+        if (!item) return;
+        // Navigate to the item's location and set exact search
+        setLocation(loc);
+        pantrySearchInput.value = item.name;
+        searchQuery = item.name.toLowerCase();
+        renderPantryItems();
+        closeSearchDropdown();
+        pantrySearchInput.blur();
     });
 
     filterChips.forEach(chip => {
@@ -708,6 +747,9 @@ function switchView(viewName) {
     } else if (viewName === 'restock') {
         restockView.classList.add('active');
     }
+
+    // Close search autocomplete whenever the user navigates away from Pantry
+    if (viewName !== 'pantry') closeSearchDropdown();
 }
 
 function applyStartupLocation() {
@@ -1661,6 +1703,64 @@ async function handleVoiceConfirm() {
         console.error('Error processing voice input:', error);
         showToast('Error adding item', 'error');
     }
+}
+
+// Search Autocomplete
+function updateSearchDropdown() {
+    if (!searchDropdown) return;
+
+    const query = searchQuery.trim();
+    if (!query) { closeSearchDropdown(); return; }
+
+    // Search across ALL locations so users can spot duplicates regardless of
+    // which location tab they're currently on
+    const matches = pantryItems
+        .filter(item => item.name.toLowerCase().includes(query))
+        .sort((a, b) => {
+            // Items whose name starts with the query rank first
+            const aStarts = a.name.toLowerCase().startsWith(query);
+            const bStarts = b.name.toLowerCase().startsWith(query);
+            if (aStarts !== bStarts) return aStarts ? -1 : 1;
+            return a.name.localeCompare(b.name);
+        })
+        .slice(0, 8);
+
+    if (matches.length === 0) { closeSearchDropdown(); return; }
+
+    const LOC_LABELS = {
+        'pantry': 'Pantry',
+        'fridge': 'Fridge',
+        'freezer': 'Freezer',
+        'spice-rack': 'Spice Rack'
+    };
+
+    searchDropdown.innerHTML = matches.map(item => {
+        const loc = item.location || 'pantry';
+        return `<div class="search-suggestion" data-item-id="${item.id}" data-location="${loc}">
+            <span class="suggestion-name">${highlightMatch(item.name, query)}</span>
+            <span class="suggestion-loc">${LOC_LABELS[loc] || loc}</span>
+        </div>`;
+    }).join('');
+
+    searchDropdown.classList.remove('hidden');
+}
+
+function closeSearchDropdown() {
+    if (searchDropdown) searchDropdown.classList.add('hidden');
+}
+
+// Highlight the matched substring in a suggestion label (XSS-safe)
+function highlightMatch(text, query) {
+    if (!query) return escapeHtml(text);
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return escapeHtml(text);
+    return (
+        escapeHtml(text.slice(0, idx)) +
+        '<mark class="suggestion-mark">' +
+        escapeHtml(text.slice(idx, idx + query.length)) +
+        '</mark>' +
+        escapeHtml(text.slice(idx + query.length))
+    );
 }
 
 // Shopping List View
